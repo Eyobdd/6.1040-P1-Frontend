@@ -7,19 +7,7 @@ import Sidebar from './components/Sidebar/Sidebar.vue';
     <Sidebar />
 
     <v-main class="main-content">
-      <div class="content-wrapper">
-        <!-- Center content -->
-        <div class="center-content">
-          <!-- Logo/Title -->
-          <div class="app-logo">
-            <img
-              src="@/assets/ZienNameLogo.svg"
-              alt="Zien"
-              class="logo-image"
-            />
-          </div>
-        </div>
-      </div>
+      <router-view />
     </v-main>
   </v-app>
 </template>
@@ -40,29 +28,5 @@ import Sidebar from './components/Sidebar/Sidebar.vue';
 .main-content {
   background-color: #fcfcf9;
   margin-left: 0 !important;
-}
-
-.content-wrapper {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  padding: 0;
-}
-
-.center-content {
-  max-width: 720px;
-  width: 100%;
-}
-
-.app-logo {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.logo-image {
-  height: 64px;
-  width: auto;
 }
 </style>

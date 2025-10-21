@@ -1,10 +1,9 @@
 <template>
-  <div
+  <div 
     class="sidebar-wrapper"
-    @mouseenter="isHovered = true"
-    @mouseleave="isHovered = false"
+    @mouseleave="handleSidebarLeave"
   >
-    <div class="sidebar-container" :class="{ expanded: isHovered }">
+    <nav class="sidebar-container" :class="{ expanded: hoveredItem !== null }" aria-label="Main navigation">
       <!-- Left column: Navigation icons -->
       <div class="nav-column">
         <!-- Logo at top -->
@@ -18,49 +17,72 @@
 
         <!-- Main navigation items -->
         <div class="nav-items">
-          <div
-            class="nav-item"
-            :class="{ active: activeItem === 'today' }"
-            @click="activeItem = 'today'"
+          <router-link 
+            to="/" 
+            class="nav-item" 
+            :class="{ active: activeItem === 'today', hovering: hoveredItem === 'today' }"
+            @mouseenter="handleItemEnter('today')"
+            @mouseleave="handleItemLeave"
+            aria-label="Today"
           >
             <v-icon class="nav-icon">mdi-calendar-today</v-icon>
             <span class="nav-label">Today</span>
-          </div>
+          </router-link>
 
-          <div
-            class="nav-item"
-            :class="{ active: activeItem === 'journal' }"
-            @click="activeItem = 'journal'"
+          <router-link 
+            to="/journal" 
+            class="nav-item" 
+            :class="{ active: activeItem === 'journal', hovering: hoveredItem === 'journal' }"
+            @mouseenter="handleItemEnter('journal')"
+            @mouseleave="handleItemLeave"
+            aria-label="Journal"
           >
             <v-icon class="nav-icon">mdi-book-open-outline</v-icon>
             <span class="nav-label">Journal</span>
-          </div>
+          </router-link>
 
-          <div
-            class="nav-item"
-            :class="{ active: activeItem === 'schedule' }"
-            @click="activeItem = 'schedule'"
+          <router-link 
+            to="/schedule" 
+            class="nav-item" 
+            :class="{ active: activeItem === 'schedule', hovering: hoveredItem === 'schedule' }"
+            @mouseenter="handleItemEnter('schedule')"
+            @mouseleave="handleItemLeave"
+            aria-label="Schedule"
           >
             <v-icon class="nav-icon">mdi-calendar-outline</v-icon>
             <span class="nav-label">Schedule</span>
-          </div>
+          </router-link>
         </div>
 
         <!-- Bottom items -->
         <div class="bottom-items">
-          <div class="nav-item account-item">
+          <router-link 
+            to="/account"
+            class="nav-item account-item" 
+            :class="{ active: activeItem === 'account', hovering: hoveredItem === 'account' }"
+            @mouseenter="handleItemEnter('account')"
+            @mouseleave="handleItemLeave"
+            aria-label="Account"
+          >
             <v-avatar size="32" color="orange">
               <span class="text-white">E</span>
             </v-avatar>
             <span class="nav-label">Account</span>
-          </div>
+          </router-link>
         </div>
       </div>
 
       <!-- Right column: Expanded panel -->
       <transition name="slide-fade">
-        <div v-if="isHovered" class="expanded-panel">
-          <div v-if="activeItem === 'today'" class="panel-content">
+        <div 
+          v-if="hoveredItem !== null" 
+          class="expanded-panel"
+          @mouseenter="cancelHideTimeout"
+          @mouseleave="handleItemLeave"
+          role="region"
+          :aria-label="`${hoveredItem} menu`"
+        >
+          <div v-if="hoveredItem === 'today'" class="panel-content">
             <div class="panel-header">
               <h3>Today</h3>
               <v-btn icon size="small" variant="text">
@@ -83,7 +105,7 @@
             </div>
           </div>
 
-          <div v-if="activeItem === 'journal'" class="panel-content">
+          <div v-if="hoveredItem === 'journal'" class="panel-content">
             <div class="panel-header">
               <h3>Journal</h3>
               <v-btn icon size="small" variant="text">
@@ -92,21 +114,21 @@
             </div>
             <div class="panel-items">
               <div class="panel-item">
-                <v-icon size="18" class="item-icon">mdi-file-document-outline</v-icon>
-                <span>All entries</span>
+                <v-icon size="18" class="item-icon">mdi-star-outline</v-icon>
+                <span>Favourite Entries</span>
               </div>
               <div class="panel-item">
-                <v-icon size="18" class="item-icon">mdi-star-outline</v-icon>
-                <span>Favorites</span>
+                <v-icon size="18" class="item-icon">mdi-message-text-outline</v-icon>
+                <span>Current Prompts</span>
               </div>
               <div class="panel-item">
                 <v-icon size="18" class="item-icon">mdi-archive-outline</v-icon>
-                <span>Archived</span>
+                <span>Past Entries</span>
               </div>
             </div>
           </div>
 
-          <div v-if="activeItem === 'schedule'" class="panel-content">
+          <div v-if="hoveredItem === 'schedule'" class="panel-content">
             <div class="panel-header">
               <h3>Schedule</h3>
               <v-btn icon size="small" variant="text">
@@ -128,17 +150,79 @@
               </div>
             </div>
           </div>
+
+          <div v-if="hoveredItem === 'account'" class="panel-content">
+            <div class="panel-header">
+              <h3>Account</h3>
+            </div>
+            <div class="panel-items">
+              <div class="panel-item">
+                <v-icon size="18" class="item-icon">mdi-cog-outline</v-icon>
+                <span>Settings</span>
+              </div>
+              <div class="panel-item">
+                <v-icon size="18" class="item-icon">mdi-help-circle-outline</v-icon>
+                <span>Help & Feedback</span>
+              </div>
+              <div class="panel-item logout-item">
+                <v-icon size="18" class="item-icon">mdi-logout</v-icon>
+                <span>Logout</span>
+              </div>
+            </div>
+          </div>
         </div>
       </transition>
-    </div>
+    </nav>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
+import { useRoute } from 'vue-router';
 
-const activeItem = ref('today');
-const isHovered = ref(false);
+const route = useRoute();
+const activeItem = computed(() => {
+  const path = route.path;
+  if (path === '/') return 'today';
+  if (path === '/journal') return 'journal';
+  if (path === '/schedule') return 'schedule';
+  if (path === '/account') return 'account';
+  return 'today';
+});
+const hoveredItem = ref<string | null>(null);
+let hideTimeout: ReturnType<typeof setTimeout> | null = null;
+
+const handleItemEnter = (item: string) => {
+  // Cancel any pending hide timeout
+  cancelHideTimeout();
+  // Set the hovered item
+  hoveredItem.value = item;
+};
+
+const handleItemLeave = () => {
+  // Clear any existing timeout
+  if (hideTimeout) {
+    clearTimeout(hideTimeout);
+  }
+  // Wait 500ms before hiding the panel
+  hideTimeout = setTimeout(() => {
+    hoveredItem.value = null;
+  }, 500);
+};
+
+const handleSidebarLeave = () => {
+  // Immediately hide when leaving the entire sidebar
+  cancelHideTimeout();
+  hoveredItem.value = null;
+};
+
+// Clear timeout when hovering back over icon or panel
+const cancelHideTimeout = () => {
+  if (hideTimeout) {
+    clearTimeout(hideTimeout);
+    hideTimeout = null;
+  }
+};
 </script>
 
 <style scoped>
@@ -198,9 +282,15 @@ const isHovered = ref(false);
   color: #666;
   transition: all 0.2s ease;
   position: relative;
+  text-decoration: none;
 }
 
 .nav-item:hover {
+  color: #20808d;
+  background-color: rgba(32, 128, 141, 0.08);
+}
+
+.nav-item.hovering {
   color: #20808d;
   background-color: rgba(32, 128, 141, 0.08);
 }
@@ -319,5 +409,20 @@ const isHovered = ref(false);
 
 .panel-item:hover .item-icon {
   color: #20808d;
+}
+
+.logout-item {
+  margin-top: 8px;
+  border-top: 1px solid #e5e5e5;
+  padding-top: 12px !important;
+}
+
+.logout-item:hover {
+  background-color: rgba(239, 68, 68, 0.08);
+  color: #ef4444;
+}
+
+.logout-item:hover .item-icon {
+  color: #ef4444;
 }
 </style>
