@@ -6,7 +6,7 @@ import Sidebar from './components/Sidebar/Sidebar.vue';
   <v-app class="zien-app">
     <Sidebar />
 
-    <v-main class="main-content" style="margin-left: 72px">
+    <v-main class="main-content">
       <div class="content-wrapper">
         <!-- Center content -->
         <div class="center-content">
@@ -32,16 +32,13 @@ import Sidebar from './components/Sidebar/Sidebar.vue';
   text-align: center !important;
   display: flex !important;
   flex-grow: 1 !important;
+  max-width: unset !important;
 }
 </style>
 
 <style scoped>
-.zien-app {
-  background-color: #ffffff;
-}
-
 .main-content {
-  background-color: #ffffff;
+  background-color: #fcfcf9;
   margin-left: 0 !important;
 }
 
