@@ -1,45 +1,71 @@
 <script setup lang="ts">
-import HelloWorld from './components/HelloWorld/HelloWorld.vue';
+import Sidebar from './components/Sidebar/Sidebar.vue';
 </script>
 
 <template>
-  <v-app>
-    <v-app-bar color="primary" prominent>
-      <v-app-bar-title>Vite + Vue + Vuetify</v-app-bar-title>
-      <v-spacer></v-spacer>
-      <v-btn icon>
-        <v-icon>mdi-magnify</v-icon>
-      </v-btn>
-    </v-app-bar>
+  <v-app class="zien-app">
+    <Sidebar />
 
-    <v-main>
-      <v-container>
-        <v-row justify="center">
-          <v-col cols="12" md="8">
-            <v-card class="mx-auto" elevation="2">
-              <v-card-title>Welcome to Your Vue App</v-card-title>
-              <v-card-text>
-                <HelloWorld msg="Vite + Vue + Vuetify" />
-              </v-card-text>
-            </v-card>
-          </v-col>
-        </v-row>
-      </v-container>
+    <v-main class="main-content" style="margin-left: 72px">
+      <div class="content-wrapper">
+        <!-- Center content -->
+        <div class="center-content">
+          <!-- Logo/Title -->
+          <div class="app-logo">
+            <img
+              src="@/assets/ZienNameLogo.svg"
+              alt="Zien"
+              class="logo-image"
+            />
+          </div>
+        </div>
+      </div>
     </v-main>
   </v-app>
 </template>
 
+<style>
+/* Global styles for #app */
+#app {
+  margin: 0 0 0 72px !important;
+  padding: 0 !important;
+  text-align: center !important;
+  display: flex !important;
+  flex-grow: 1 !important;
+}
+</style>
+
 <style scoped>
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
+.zien-app {
+  background-color: #ffffff;
 }
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
+
+.main-content {
+  background-color: #ffffff;
+  margin-left: 0 !important;
 }
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #42b883aa);
+
+.content-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  padding: 0;
+}
+
+.center-content {
+  max-width: 720px;
+  width: 100%;
+}
+
+.app-logo {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.logo-image {
+  height: 64px;
+  width: auto;
 }
 </style>
