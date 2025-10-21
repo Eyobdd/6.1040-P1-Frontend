@@ -3,15 +3,30 @@ import HelloWorld from './components/HelloWorld/HelloWorld.vue';
 </script>
 
 <template>
-  <div>
-    <a href="https://vite.dev" target="_blank">
-      <img src="/vite.svg" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://vuejs.org/" target="_blank">
-      <img src="./assets/vue.svg" class="logo vue" alt="Vue logo" />
-    </a>
-  </div>
-  <HelloWorld msg="Vite + Vue" />
+  <v-app>
+    <v-app-bar color="primary" prominent>
+      <v-app-bar-title>Vite + Vue + Vuetify</v-app-bar-title>
+      <v-spacer></v-spacer>
+      <v-btn icon>
+        <v-icon>mdi-magnify</v-icon>
+      </v-btn>
+    </v-app-bar>
+
+    <v-main>
+      <v-container>
+        <v-row justify="center">
+          <v-col cols="12" md="8">
+            <v-card class="mx-auto" elevation="2">
+              <v-card-title>Welcome to Your Vue App</v-card-title>
+              <v-card-text>
+                <HelloWorld msg="Vite + Vue + Vuetify" />
+              </v-card-text>
+            </v-card>
+          </v-col>
+        </v-row>
+      </v-container>
+    </v-main>
+  </v-app>
 </template>
 
 <style scoped>
