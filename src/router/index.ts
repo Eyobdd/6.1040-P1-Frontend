@@ -1,33 +1,83 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { api } from '@/services/api';
+import AuthenticatedLayout from '../layouts/AuthenticatedLayout.vue';
+import UnauthenticatedLayout from '../layouts/UnauthenticatedLayout.vue';
 import TodayView from '../views/TodayView.vue';
+import AuthView from '../views/AuthView.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
+      path: '/auth',
+      component: UnauthenticatedLayout,
+      children: [
+        {
+          path: '',
+          name: 'auth',
+          component: AuthView,
+        },
+      ],
+    },
+    {
       path: '/',
-      name: 'today',
-      component: TodayView,
-    },
-    {
-      path: '/journal',
-      name: 'journal',
-      // route level code-splitting
-      // this generates a separate chunk (Journal.[hash].js) for this route
-      // which is lazy-loaded when the route is visited.
-      component: () => import('../views/JournalView.vue'),
-    },
-    {
-      path: '/schedule',
-      name: 'schedule',
-      component: () => import('../views/ScheduleView.vue'),
-    },
-    {
-      path: '/account',
-      name: 'account',
-      component: () => import('../views/AccountView.vue'),
+      component: AuthenticatedLayout,
+      meta: { requiresAuth: true },
+      children: [
+        {
+          path: '',
+          name: 'today',
+          component: TodayView,
+        },
+        {
+          path: 'reflect',
+          name: 'reflect',
+          component: () => import('../views/ReflectView.vue'),
+        },
+        {
+          path: 'journal',
+          name: 'journal',
+          component: () => import('../views/JournalView.vue'),
+        },
+        {
+          path: 'schedule',
+          name: 'schedule',
+          component: () => import('../views/ScheduleView.vue'),
+        },
+        {
+          path: 'account',
+          name: 'account',
+          component: () => import('../views/AccountView.vue'),
+        },
+      ],
     },
   ],
+});
+
+// Auth guard
+router.beforeEach(async (to, from, next) => {
+  const token = api.getToken();
+  
+  // Check if any matched route requires auth
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
+  
+  console.log('Router guard:', { to: to.path, from: from.path, token: !!token, requiresAuth });
+  
+  // If route requires auth and no token, redirect to auth
+  if (requiresAuth && !token) {
+    console.log('Redirecting to auth - no token');
+    next('/auth');
+  } 
+  // If already logged in and trying to access auth page, redirect to home
+  else if (to.path === '/auth' && token) {
+    console.log('Redirecting to home - already logged in');
+    next('/');
+  } 
+  // Allow navigation
+  else {
+    console.log('Allowing navigation');
+    next();
+  }
 });
 
 export default router;

@@ -164,7 +164,7 @@
                 <v-icon size="18" class="item-icon">mdi-help-circle-outline</v-icon>
                 <span>Help & Feedback</span>
               </div>
-              <div class="panel-item logout-item">
+              <div class="panel-item logout-item" @click="handleLogout">
                 <v-icon size="18" class="item-icon">mdi-logout</v-icon>
                 <span>Logout</span>
               </div>
@@ -178,9 +178,12 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
+import { api } from '@/services/api';
 
 const route = useRoute();
+const router = useRouter();
+
 const activeItem = computed(() => {
   const path = route.path;
   if (path === '/') return 'today';
@@ -221,6 +224,26 @@ const cancelHideTimeout = () => {
   if (hideTimeout) {
     clearTimeout(hideTimeout);
     hideTimeout = null;
+  }
+};
+
+const handleLogout = async () => {
+  try {
+    // Call backend logout endpoint
+    await api.post('UserAuthentication/logout', {});
+    
+    // Clear local token
+    api.clearToken();
+    localStorage.removeItem('phoneNumber');
+    
+    // Redirect to auth page
+    router.push('/auth');
+  } catch (error) {
+    console.error('Logout failed:', error);
+    // Even if backend fails, clear local state and redirect
+    api.clearToken();
+    localStorage.removeItem('phoneNumber');
+    router.push('/auth');
   }
 };
 </script>
