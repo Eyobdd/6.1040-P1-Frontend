@@ -1,0 +1,7 @@
+# Zien User Journey
+
+## Demo User Journey
+
+Jordan, a busy grad student, opens Zien for the first time and registers using their phone number, receiving a verification code via SMS (mocked in console for demo). After logging in, they're greeted by a clean dashboard showing today's date with a prompt to start their first reflection. Jordan clicks "Start Reflection" and begins answering five thoughtful prompts one by one: sharing what they're grateful for (their supportive friends and good health), what they accomplished today (finished a challenging project milestone), what they're proud of (staying focused despite distractions), their plans for tomorrow (start the next project phase), and any final thoughts (feeling optimistic about the week ahead). After answering all prompts, Jordan rates their day as a +1. Upon completing the session, they're redirected to the dashboard where their journal entry is beautifully displayed with all their responses organized and preserved. The next time Jordan opens Zien, they can see this reflection as an immutable record of their day, providing a moment of clarity and helping them maintain focus on what truly matters.
+
+Demo Video: [Demo Video](https://drive.google.com/drive/folders/1wCEFdIfzZFHb8dUq44cAn1EL8Gytx3iP?usp=sharing)
