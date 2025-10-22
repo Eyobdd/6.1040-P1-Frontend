@@ -20,13 +20,13 @@
           <router-link 
             to="/" 
             class="nav-item" 
-            :class="{ active: activeItem === 'today', hovering: hoveredItem === 'today' }"
-            @mouseenter="handleItemEnter('today')"
+            :class="{ active: activeItem === 'dayView', hovering: hoveredItem === 'dayView' }"
+            @mouseenter="handleItemEnter('dayView')"
             @mouseleave="handleItemLeave"
-            aria-label="Today"
+            aria-label="Day View"
           >
             <v-icon class="nav-icon">mdi-calendar-today</v-icon>
-            <span class="nav-label">Today</span>
+            <span class="nav-label">Day View</span>
           </router-link>
 
           <router-link 
@@ -82,25 +82,28 @@
           role="region"
           :aria-label="`${hoveredItem} menu`"
         >
-          <div v-if="hoveredItem === 'today'" class="panel-content">
+          <div v-if="hoveredItem === 'dayView'" class="panel-content">
             <div class="panel-header">
-              <h3>Today</h3>
-              <v-btn icon size="small" variant="text">
-                <v-icon size="18">mdi-pin-outline</v-icon>
-              </v-btn>
+              <h3>Day View</h3>
             </div>
             <div class="panel-items">
-              <div class="panel-item">
-                <v-icon size="18" class="item-icon">mdi-clock-outline</v-icon>
-                <span>Recent entries</span>
+              <div class="panel-item" @click="handleGoToDayView">
+                <v-icon size="18" class="item-icon">mdi-calendar-today</v-icon>
+                <span>Day View</span>
               </div>
-              <div class="panel-item">
-                <v-icon size="18" class="item-icon">mdi-phone-outline</v-icon>
-                <span>Scheduled calls</span>
-              </div>
-              <div class="panel-item">
-                <v-icon size="18" class="item-icon">mdi-calendar-check</v-icon>
-                <span>Today's tasks</span>
+              <div class="button-wrapper">
+                <div 
+                  class="panel-item call-item" 
+                  :class="{ disabled: isCallCompleted }"
+                  @click="handleInitiateCall"
+                  role="button"
+                  tabindex="0"
+                  @keyup.enter="handleInitiateCall"
+                  aria-label="Initiate call for today"
+                >
+                  <v-icon size="18" class="item-icon">mdi-phone-outline</v-icon>
+                  <span>Initiate Call</span>
+                </div>
               </div>
             </div>
           </div>
@@ -108,9 +111,6 @@
           <div v-if="hoveredItem === 'journal'" class="panel-content">
             <div class="panel-header">
               <h3>Journal</h3>
-              <v-btn icon size="small" variant="text">
-                <v-icon size="18">mdi-pin-outline</v-icon>
-              </v-btn>
             </div>
             <div class="panel-items">
               <div class="panel-item">
@@ -131,9 +131,6 @@
           <div v-if="hoveredItem === 'schedule'" class="panel-content">
             <div class="panel-header">
               <h3>Schedule</h3>
-              <v-btn icon size="small" variant="text">
-                <v-icon size="18">mdi-pin-outline</v-icon>
-              </v-btn>
             </div>
             <div class="panel-items">
               <div class="panel-item">
@@ -164,9 +161,18 @@
                 <v-icon size="18" class="item-icon">mdi-help-circle-outline</v-icon>
                 <span>Help & Feedback</span>
               </div>
-              <div class="panel-item logout-item" @click="handleLogout">
-                <v-icon size="18" class="item-icon">mdi-logout</v-icon>
-                <span>Logout</span>
+              <div class="button-wrapper">
+                <div 
+                  class="panel-item logout-item" 
+                  @click="handleLogout"
+                  role="button"
+                  tabindex="0"
+                  @keyup.enter="handleLogout"
+                  aria-label="Logout from your account"
+                >
+                  <v-icon size="18" class="item-icon">mdi-logout</v-icon>
+                  <span>Logout</span>
+                </div>
               </div>
             </div>
           </div>
@@ -186,14 +192,17 @@ const router = useRouter();
 
 const activeItem = computed(() => {
   const path = route.path;
-  if (path === '/') return 'today';
+  if (path === '/') return 'dayView';
   if (path === '/journal') return 'journal';
   if (path === '/schedule') return 'schedule';
   if (path === '/account') return 'account';
-  return 'today';
+  return 'dayView';
 });
 const hoveredItem = ref<string | null>(null);
 let hideTimeout: ReturnType<typeof setTimeout> | null = null;
+
+// TODO: Replace with actual call status check from API
+const isCallCompleted = ref(false);
 
 const handleItemEnter = (item: string) => {
   // Cancel any pending hide timeout
@@ -225,6 +234,17 @@ const cancelHideTimeout = () => {
     clearTimeout(hideTimeout);
     hideTimeout = null;
   }
+};
+
+const handleGoToDayView = () => {
+  router.push('/');
+};
+
+const handleInitiateCall = () => {
+  if (isCallCompleted.value) return;
+  // TODO: Implement call initiation logic
+  console.log('Initiating call...');
+  // Keep panel open so user can see the action
 };
 
 const handleLogout = async () => {
@@ -392,7 +412,9 @@ const handleLogout = async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #e5e5e5;
 }
 
 .panel-header h3 {
@@ -434,14 +456,38 @@ const handleLogout = async () => {
   color: #20808d;
 }
 
-.logout-item {
-  margin-top: 8px;
+.call-item {
+  cursor: pointer;
+  color: #20808d;
+}
+
+.call-item:hover {
+  background: rgba(32, 128, 141, 0.08);
+}
+
+.call-item:hover .item-icon {
+  color: #20808d;
+}
+
+.call-item.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+
+.button-wrapper {
+  margin-top: 6px;
+  padding-top: 6px;
   border-top: 1px solid #e5e5e5;
-  padding-top: 12px !important;
+}
+
+.logout-item {
+  color: #d32f2f;
 }
 
 .logout-item:hover {
-  background-color: rgba(239, 68, 68, 0.08);
+  background: #ffebee;
   color: #ef4444;
 }
 

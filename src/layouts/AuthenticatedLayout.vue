@@ -20,7 +20,7 @@ import Sidebar from '@/components/Sidebar/Sidebar.vue';
 
 .main-content {
   background-color: #fcfcf9;
-  margin-left: 0 !important;
+  margin-left: 72px !important;
   flex: 1;
 }
 </style>

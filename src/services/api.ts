@@ -149,6 +149,10 @@ class ApiService {
     return this.post('ReflectionSession/_getSession', { session });
   }
 
+  async abandonSession(session: string) {
+    return this.post('ReflectionSession/abandonSession', { session });
+  }
+
   // JournalEntry endpoints
   async createFromSession(sessionData: any, sessionResponses: any[]) {
     return this.post<{ entry?: string; error?: string }>('JournalEntry/createFromSession', {

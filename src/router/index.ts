@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { api } from '@/services/api';
 import AuthenticatedLayout from '../layouts/AuthenticatedLayout.vue';
 import UnauthenticatedLayout from '../layouts/UnauthenticatedLayout.vue';
-import TodayView from '../views/TodayView.vue';
+import DayView from '../views/DayView.vue';
 import AuthView from '../views/AuthView.vue';
 
 const router = createRouter({
@@ -26,8 +26,8 @@ const router = createRouter({
       children: [
         {
           path: '',
-          name: 'today',
-          component: TodayView,
+          name: 'dayView',
+          component: DayView,
         },
         {
           path: 'reflect',

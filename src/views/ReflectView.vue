@@ -64,7 +64,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { api } from '@/services/api';
 
@@ -79,6 +79,8 @@ const sessionId = ref<string | null>(null);
 const currentUser = ref<string | null>(null);
 const completed = ref(false);
 const loading = ref(true);
+const existingEntry = ref<any>(null);
+const showExistingEntry = ref(false);
 
 const totalSteps = computed(() => prompts.value.length + 1); // prompts + rating
 const progress = computed(() => ((currentStep.value + 1) / totalSteps.value) * 100);
@@ -102,17 +104,28 @@ async function loadPromptsAndStartSession() {
     // Get current user
     const token = api.getToken();
     if (!token) {
-      router.push('/login');
+      router.push('/auth');
       return;
     }
 
     const authResult = await api.authenticate(token);
     if ('error' in authResult || !authResult.user) {
-      router.push('/login');
+      router.push('/auth');
       return;
     }
 
     currentUser.value = authResult.user;
+
+    // Check if there's already a completed entry for today
+    const today = new Date().toISOString().split('T')[0];
+    const entryResult = await api.getEntryByDate(authResult.user, today);
+    
+    if (entryResult && '_id' in entryResult) {
+      // Entry exists for today - redirect to day view
+      console.log('Entry already exists for today, redirecting to day view');
+      router.push('/');
+      return;
+    }
 
     // Get active prompts
     const promptsResult = await api.getActivePrompts(authResult.user);
@@ -137,7 +150,10 @@ async function loadPromptsAndStartSession() {
     );
 
     if ('error' in sessionResult) {
-      alert(sessionResult.error);
+      // If error is about existing in-progress session, we could handle it here
+      // For now, show error and redirect
+      console.error('Failed to start session:', sessionResult.error);
+      alert('Failed to start reflection session: ' + sessionResult.error);
       router.push('/');
       return;
     }
@@ -205,7 +221,7 @@ async function completeReflection() {
       {
         user: currentUser.value,
         reflectionSession: sessionId.value,
-        endedAt: new Date(),
+        endedAt: new Date().toISOString(),
         rating: selectedRating.value,
       },
       sessionResponses
@@ -222,8 +238,25 @@ function goToDashboard() {
   router.push('/');
 }
 
+async function cleanupIncompleteSession() {
+  // If there's an active session that hasn't been completed, abandon it
+  if (sessionId.value && !completed.value) {
+    try {
+      console.log('Abandoning incomplete session:', sessionId.value);
+      await api.abandonSession(sessionId.value);
+    } catch (e) {
+      console.error('Failed to abandon session:', e);
+      // Don't block navigation on cleanup failure
+    }
+  }
+}
+
 onMounted(() => {
   loadPromptsAndStartSession();
+});
+
+onBeforeUnmount(() => {
+  cleanupIncompleteSession();
 });
 </script>
 
