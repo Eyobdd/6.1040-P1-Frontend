@@ -50,3 +50,51 @@ This document records the architectural and design decisions made for this proje
 - **Logo**: Custom Zien logo using `ZienNameLogo.svg` asset
 - **Color Scheme**: Teal accent (`#20808d`) for interactive elements and active states
 - **Typography**: System font stack with clean, modern appearance
+
+## Backend Architecture
+
+### Concept-Based Design
+
+The backend follows a concept-based architecture where each concept is an independent, reusable unit of functionality. Concepts are composed via synchronizations rather than direct dependencies.
+
+**Implemented Concepts:**
+- ✅ **CallWindow** - User availability windows for reflection calls
+- ✅ **CallSession** - Individual call attempt tracking per user/day
+- 🔄 **JournalPrompt** - Customizable reflection prompts (up to 5 per user)
+- 🔄 **ReflectionSession** - Live reflection progress tracking
+- 🔄 **JournalEntry** - Immutable daily reflection records
+- 🔄 **Profile** - User profile information (display name, phone, timezone)
+- 🔄 **User** - Core user identity
+- 🔄 **UserAuthentication** - Phone-based authentication with SMS verification
+
+**Deferred to Post-MVP:**
+- ⏸️ **Tasks** - To-do list generation from reflections (out of scope for MVP)
+
+### Authentication Strategy
+
+**Phone Number Authentication** with mocked SMS for development:
+- Users register/login with phone number
+- 6-digit verification codes sent via SMS (console-logged in dev mode)
+- Sessions persist for 30 days
+- Production will integrate Twilio Verify API
+
+**Rationale:**
+- Aligns with future phone call feature
+- Modern, passwordless user experience
+- Mocked SMS keeps development simple and cost-free
+
+### Key Design Decisions
+
+1. **Fully Immutable Records**: Both ReflectionSession and JournalEntry are immutable once completed - responses and ratings are permanent snapshots
+2. **Flexible Prompts**: Users can customize up to 5 reflection prompts; prompt text is snapshotted in entries so past reflections aren't affected by changes
+3. **Separate Rating Field**: Rating (-2 to 2) is captured separately from prompt responses for cleaner data modeling
+4. **Session vs Entry Separation**: ReflectionSession tracks live progress (mutable until completed), JournalEntry preserves completed reflections (fully immutable)
+
+### Technology Stack
+
+- **Runtime**: Deno
+- **Database**: MongoDB with concept-based collections
+- **Testing**: Vitest with comprehensive test coverage
+- **API Pattern**: Discriminated unions for type-safe error handling (`Empty | { error: string }`)
+
+See `concept_backend/CONCEPT_ARCHITECTURE.md` for detailed concept specifications and synchronizations.
