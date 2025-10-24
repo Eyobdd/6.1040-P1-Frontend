@@ -280,7 +280,7 @@ const handleLogout = async () => {
 .sidebar-container {
   display: flex;
   height: 100vh;
-  background-color: #f7f7f7;
+  background-color: #f3f3ec;
   border-right: 1px solid #e5e5e5;
   transition: all 0.3s ease;
 }
@@ -380,7 +380,7 @@ const handleLogout = async () => {
 /* Right column: Expanded panel */
 .expanded-panel {
   width: 200px;
-  background-color: #f7f7f7;
+  background-color: #f3f3ec;
   padding: 16px;
   overflow-y: auto;
 }
@@ -443,7 +443,7 @@ const handleLogout = async () => {
 }
 
 .panel-item:hover {
-  background-color: #f7f7f7;
+  background-color: #e5e5dd;
   color: #202020;
 }
 
@@ -488,10 +488,9 @@ const handleLogout = async () => {
 
 .logout-item:hover {
   background: #ffebee;
-  color: #ef4444;
 }
 
 .logout-item:hover .item-icon {
-  color: #ef4444;
+  color: #d32f2f;
 }
 </style>
