@@ -71,8 +71,6 @@ const scoreLabel = computed(() => {
   border: 1px solid #e5e5e5;
   border-radius: 12px;
   padding: 24px;
-  position: sticky;
-  top: 96px;
   transition: background 0.3s ease;
   min-height: 200px;
   display: flex;

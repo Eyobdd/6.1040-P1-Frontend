@@ -51,6 +51,33 @@ This document records the architectural and design decisions made for this proje
 - **Color Scheme**: Teal accent (`#20808d`) for interactive elements and active states
 - **Typography**: System font stack with clean, modern appearance
 
+### CallWindowsCard Component
+
+**Purpose**: Interactive timeline for managing daily call availability windows
+
+**Key Features**:
+- **24-Hour Timeline**: Vertical grid with 15-minute increments, scrollable with fixed header
+- **Drag-to-Create**: Click and drag on timeline to create new windows (5-minute minimum)
+- **Automatic Merging**: Overlapping windows automatically merge without user prompt
+- **Undo/Redo**: Full undo/redo support with visual feedback (mdi-undo-variant/mdi-redo-variant icons)
+- **Recurring vs One-Off**: 
+  - Displays recurring windows as dashed borders when no one-off windows exist
+  - First edit converts recurring windows to one-off windows for that specific day
+  - Prevents ghost windows from appearing after undo operations
+- **Visual Grouping**: Button dividers separate action groups (Add | Undo/Redo | Reset/Clear)
+
+**Interaction Patterns**:
+- Hover over window: Shows delete icon inline
+- Click window: Opens edit modal with typeable time inputs
+- Reset: Clears one-off windows, reverts to recurring defaults
+- Clear: Removes all windows for the day
+
+**Styling**:
+- Background: `#fcfcf9` (matches page background)
+- Borders/Lines: `#e4e4e4`
+- Window color: Teal `#20808d` with 15% opacity fill
+- Circular buttons with dividers for clean, organized header
+
 ## Backend Architecture
 
 ### Concept-Based Design
@@ -59,6 +86,10 @@ The backend follows a concept-based architecture where each concept is an indepe
 
 **Implemented Concepts:**
 - ✅ **CallWindow** - User availability windows for reflection calls
+  - Supports both recurring weekly windows and one-off date-specific windows
+  - Automatic merge functionality: overlapping windows are automatically merged when created
+  - Merge algorithm: takes earliest start time and latest end time of all overlapping windows
+  - Backend `mergeOverlappingOneOffWindows` action handles overlap detection and merging
 - ✅ **CallSession** - Individual call attempt tracking per user/day
 - 🔄 **JournalPrompt** - Customizable reflection prompts (up to 5 per user)
 - 🔄 **ReflectionSession** - Live reflection progress tracking

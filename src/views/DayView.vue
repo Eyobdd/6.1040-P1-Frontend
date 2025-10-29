@@ -58,6 +58,12 @@
       <!-- Right Sidebar -->
       <div class="right-sidebar">
         <DayScoreWidget :score="dayEntry?.rating" />
+        <CallWindowsCard 
+          v-if="currentUser"
+          :selectedDate="selectedDate" 
+          :userId="currentUser"
+          class="call-windows-section"
+        />
       </div>
     </div>
 
@@ -79,6 +85,7 @@ import DateCarousel from '@/components/DateCarousel.vue';
 import JournalResponseCard from '@/components/JournalResponseCard.vue';
 import DayScoreWidget from '@/components/DayScoreWidget.vue';
 import ResponseModal from '@/components/ResponseModal.vue';
+import CallWindowsCard from '@/components/CallWindowsCard.vue';
 
 const router = useRouter();
 const loading = ref(true);
@@ -270,6 +277,14 @@ onMounted(() => {
 /* Right Sidebar */
 .right-sidebar {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.call-windows-section {
+  flex: 1;
+  min-height: 600px;
 }
 
 /* Responsive Design */

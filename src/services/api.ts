@@ -172,6 +172,70 @@ class ApiService {
   async getEntryResponses(entry: string) {
     return this.post('JournalEntry/_getEntryResponses', { entry });
   }
+
+  // CallWindow endpoints
+  async createRecurringCallWindow(user: string, dayOfWeek: string, startTime: Date, endTime: Date) {
+    return this.post<{ callWindow?: string; error?: string }>('CallWindow/createRecurringCallWindow', {
+      user,
+      dayOfWeek,
+      startTime: startTime.toISOString(),
+      endTime: endTime.toISOString(),
+    });
+  }
+
+  async createOneOffCallWindow(user: string, specificDate: string, startTime: Date, endTime: Date) {
+    return this.post<{ callWindow?: string; error?: string }>('CallWindow/createOneOffCallWindow', {
+      user,
+      specificDate,
+      startTime: startTime.toISOString(),
+      endTime: endTime.toISOString(),
+    });
+  }
+
+  async deleteRecurringCallWindow(user: string, dayOfWeek: string, startTime: Date) {
+    return this.post('CallWindow/deleteRecurringCallWindow', {
+      user,
+      dayOfWeek,
+      startTime: startTime.toISOString(),
+    });
+  }
+
+  async deleteOneOffCallWindow(user: string, specificDate: string, startTime: Date) {
+    return this.post('CallWindow/deleteOneOffCallWindow', {
+      user,
+      specificDate,
+      startTime: startTime.toISOString(),
+    });
+  }
+
+  async getUserCallWindows(user: string) {
+    return this.post('CallWindow/_getUserCallWindows', { user });
+  }
+
+  async getUserRecurringWindows(user: string) {
+    return this.post('CallWindow/_getUserRecurringWindows', { user });
+  }
+
+  async getUserOneOffWindows(user: string) {
+    return this.post('CallWindow/_getUserOneOffWindows', { user });
+  }
+
+  async getRecurringWindowsByDay(dayOfWeek: string) {
+    return this.post('CallWindow/_getRecurringWindowsByDay', { dayOfWeek });
+  }
+
+  async getOneOffWindowsByDate(specificDate: string) {
+    return this.post('CallWindow/_getOneOffWindowsByDate', { specificDate });
+  }
+
+  async mergeOverlappingOneOffWindows(user: string, specificDate: string, startTime: Date, endTime: Date) {
+    return this.post<{ callWindow?: string; error?: string }>('CallWindow/mergeOverlappingOneOffWindows', {
+      user,
+      specificDate,
+      startTime: startTime.toISOString(),
+      endTime: endTime.toISOString(),
+    });
+  }
 }
 
 export const api = new ApiService();
