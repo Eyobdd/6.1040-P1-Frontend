@@ -81,16 +81,21 @@ const completed = ref(false);
 const loading = ref(true);
 const existingEntry = ref<any>(null);
 const showExistingEntry = ref(false);
+const includeRating = ref(true); // User's rating preference
 
-const totalSteps = computed(() => prompts.value.length + 1); // prompts + rating
+const totalSteps = computed(() => prompts.value.length + (includeRating.value ? 1 : 0)); // prompts + optional rating
 const progress = computed(() => ((currentStep.value + 1) / totalSteps.value) * 100);
 const currentPrompt = computed(() => prompts.value[currentStep.value]);
 
 const canProceed = computed(() => {
   if (currentStep.value < prompts.value.length) {
     return currentResponse.value.trim().length > 0;
-  } else {
+  } else if (includeRating.value) {
+    // Rating step - require rating selection
     return selectedRating.value !== null;
+  } else {
+    // No rating step - shouldn't reach here, but allow proceed
+    return true;
   }
 });
 
@@ -127,7 +132,13 @@ async function loadPromptsAndStartSession() {
       return;
     }
 
-    // Get active prompts
+    // Load user's rating preference
+    const profile = await api.getProfile(authResult.user);
+    if (profile && 'includeRating' in profile) {
+      includeRating.value = profile.includeRating;
+    }
+
+    // Get active prompts (only active ones from user's current settings)
     const promptsResult = await api.getActivePrompts(authResult.user);
     if (Array.isArray(promptsResult) && promptsResult.length > 0) {
       prompts.value = promptsResult;
@@ -185,6 +196,11 @@ async function nextStep() {
 
     currentResponse.value = '';
     currentStep.value++;
+    
+    // If we've finished all prompts and rating is not included, complete immediately
+    if (currentStep.value >= prompts.value.length && !includeRating.value) {
+      await completeReflection();
+    }
   } else {
     // Rating step - complete session
     await completeReflection();
@@ -206,8 +222,10 @@ function selectRating(rating: number) {
 
 async function completeReflection() {
   try {
-    // Set rating
-    await api.setRating(sessionId.value!, selectedRating.value!);
+    // Set rating (only if rating is included)
+    if (includeRating.value && selectedRating.value !== null) {
+      await api.setRating(sessionId.value!, selectedRating.value!);
+    }
 
     // Complete session
     await api.completeSession(sessionId.value!, prompts.value.length);
@@ -222,7 +240,7 @@ async function completeReflection() {
         user: currentUser.value,
         reflectionSession: sessionId.value,
         endedAt: new Date().toISOString(),
-        rating: selectedRating.value,
+        rating: includeRating.value ? selectedRating.value : undefined,
       },
       sessionResponses
     );

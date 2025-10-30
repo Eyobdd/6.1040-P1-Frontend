@@ -37,6 +37,11 @@ const router = createRouter({
         {
           path: 'journal',
           name: 'journal',
+          component: () => import('../views/PastEntriesView.vue'),
+        },
+        {
+          path: 'journal/prompts',
+          name: 'journalPrompts',
           component: () => import('../views/JournalView.vue'),
         },
         {

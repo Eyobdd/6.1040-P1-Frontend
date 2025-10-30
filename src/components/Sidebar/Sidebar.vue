@@ -41,7 +41,8 @@
             <span class="nav-label">Journal</span>
           </router-link>
 
-          <router-link 
+          <!-- Schedule option temporarily hidden -->
+          <!-- <router-link 
             to="/schedule" 
             class="nav-item" 
             :class="{ active: activeItem === 'schedule', hovering: hoveredItem === 'schedule' }"
@@ -51,7 +52,7 @@
           >
             <v-icon class="nav-icon">mdi-calendar-outline</v-icon>
             <span class="nav-label">Schedule</span>
-          </router-link>
+          </router-link> -->
         </div>
 
         <!-- Bottom items -->
@@ -113,22 +114,19 @@
               <h3>Journal</h3>
             </div>
             <div class="panel-items">
-              <div class="panel-item">
-                <v-icon size="18" class="item-icon">mdi-star-outline</v-icon>
-                <span>Favourite Entries</span>
-              </div>
-              <div class="panel-item">
-                <v-icon size="18" class="item-icon">mdi-message-text-outline</v-icon>
-                <span>Current Prompts</span>
-              </div>
-              <div class="panel-item">
+              <router-link to="/journal" class="panel-item">
                 <v-icon size="18" class="item-icon">mdi-archive-outline</v-icon>
                 <span>Past Entries</span>
-              </div>
+              </router-link>
+              <router-link to="/journal/prompts" class="panel-item">
+                <v-icon size="18" class="item-icon">mdi-message-text-outline</v-icon>
+                <span>Current Prompts</span>
+              </router-link>
             </div>
           </div>
 
-          <div v-if="hoveredItem === 'schedule'" class="panel-content">
+          <!-- Schedule panel temporarily hidden -->
+          <!-- <div v-if="hoveredItem === 'schedule'" class="panel-content">
             <div class="panel-header">
               <h3>Schedule</h3>
             </div>
@@ -146,7 +144,7 @@
                 <span>Past calls</span>
               </div>
             </div>
-          </div>
+          </div> -->
 
           <div v-if="hoveredItem === 'account'" class="panel-content">
             <div class="panel-header">
@@ -193,7 +191,7 @@ const router = useRouter();
 const activeItem = computed(() => {
   const path = route.path;
   if (path === '/') return 'dayView';
-  if (path === '/journal') return 'journal';
+  if (path.startsWith('/journal')) return 'journal'; // Matches /journal and /journal/prompts
   if (path === '/schedule') return 'schedule';
   if (path === '/account') return 'account';
   return 'dayView';

@@ -101,6 +101,10 @@ class ApiService {
     return this.post('Profile/_getProfile', { user });
   }
 
+  async updateRatingPreference(user: string, includeRating: boolean) {
+    return this.post('Profile/updateRatingPreference', { user, includeRating });
+  }
+
   // JournalPrompt endpoints
   async createDefaultPrompts(user: string) {
     return this.post('JournalPrompt/createDefaultPrompts', { user });
@@ -112,6 +116,26 @@ class ApiService {
 
   async getActivePrompts(user: string) {
     return this.post('JournalPrompt/_getActivePrompts', { user });
+  }
+
+  async updatePromptText(user: string, position: number, newText: string) {
+    return this.post('JournalPrompt/updatePromptText', { user, position, newText });
+  }
+
+  async reorderPrompts(user: string, newOrder: string[]) {
+    return this.post('JournalPrompt/reorderPrompts', { user, newOrder });
+  }
+
+  async togglePromptActive(user: string, position: number) {
+    return this.post('JournalPrompt/togglePromptActive', { user, position });
+  }
+
+  async deletePrompt(user: string, position: number) {
+    return this.post('JournalPrompt/deletePrompt', { user, position });
+  }
+
+  async addPrompt(user: string, promptText: string) {
+    return this.post<{ prompt?: string; error?: string }>('JournalPrompt/addPrompt', { user, promptText });
   }
 
   // ReflectionSession endpoints
@@ -163,6 +187,10 @@ class ApiService {
 
   async getEntriesByUser(user: string) {
     return this.post('JournalEntry/_getEntriesByUser', { user });
+  }
+
+  async getEntriesWithResponsesByUser(user: string) {
+    return this.post('JournalEntry/_getEntriesWithResponsesByUser', { user });
   }
 
   async getEntryByDate(user: string, date: string) {

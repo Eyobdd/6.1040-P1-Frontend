@@ -1,5 +1,14 @@
 <template>
-  <div class="call-windows-card">
+  <div class="call-windows-card" :class="{ 'completed': hasJournalEntry }">
+    <!-- Completed Overlay -->
+    <div v-if="hasJournalEntry" class="completed-overlay">
+      <div class="completed-content">
+        <v-icon size="48" color="#20808d">mdi-check-circle</v-icon>
+        <h3>Call Completed</h3>
+        <p>You've already completed your reflection call for this day</p>
+      </div>
+    </div>
+
     <!-- Header with controls -->
     <div class="card-header">
       <h3 class="card-title">Call Windows</h3>
@@ -191,6 +200,7 @@ const editingWindow = ref<DisplayWindow | null>(null);
 const undoStack = ref<{ windows: OneOffWindow[]; action: string }[]>([]);
 const redoStack = ref<{ windows: OneOffWindow[]; action: string }[]>([]);
 const dayInitialized = ref(false); // Track if this day has been initialized from recurring
+const hasJournalEntry = ref(false); // Track if a journal entry exists for this date
 
 // Computed
 const isToday = computed(() => {
@@ -708,10 +718,21 @@ const updateDisplayWindows = () => {
   displayWindows.value = windows;
 };
 
+// Check if journal entry exists for the selected date
+const checkJournalEntry = async () => {
+  try {
+    const result = await api.getEntryByDate(props.userId, selectedDateString.value);
+    hasJournalEntry.value = !!result && !('error' in result);
+  } catch (error) {
+    hasJournalEntry.value = false;
+  }
+};
+
 // Lifecycle
 onMounted(async () => {
   await loadRecurringWindows();
   await loadOneOffWindows();
+  await checkJournalEntry();
   
   // Check if this day has been initialized (has one-off windows)
   const existingOneOff = oneOffWindows.value.filter(
@@ -723,6 +744,8 @@ onMounted(async () => {
 });
 
 watch(() => props.selectedDate, async () => {
+  await checkJournalEntry();
+  
   // Check if the new date has been initialized
   const existingOneOff = oneOffWindows.value.filter(
     w => w.specificDate === selectedDateString.value
@@ -742,6 +765,48 @@ watch(() => props.selectedDate, async () => {
   display: flex;
   flex-direction: column;
   max-height: 700px;
+  position: relative;
+}
+
+.call-windows-card.completed {
+  pointer-events: none;
+}
+
+.call-windows-card.completed > *:not(.completed-overlay) {
+  opacity: 0.4;
+  filter: grayscale(0.5);
+}
+
+.completed-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(252, 252, 249, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  pointer-events: auto;
+}
+
+.completed-content {
+  text-align: center;
+  padding: 2rem;
+}
+
+.completed-content h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #202020;
+  margin: 1rem 0 0.5rem;
+}
+
+.completed-content p {
+  font-size: 1rem;
+  color: #666;
+  margin: 0;
 }
 
 .card-header {
