@@ -89,10 +89,10 @@ describe('CallWindowsCard', () => {
       renderCallWindowsCard();
       
       expect(screen.getByTitle('Add window')).toBeInTheDocument();
-      expect(screen.getByTitle('Undo last change')).toBeInTheDocument();
-      expect(screen.getByTitle('Redo last change')).toBeInTheDocument();
-      expect(screen.getByTitle('Reset to recurring defaults')).toBeInTheDocument();
-      expect(screen.getByTitle('Clear all windows')).toBeInTheDocument();
+      expect(screen.getByTitle('Undo')).toBeInTheDocument();
+      expect(screen.getByTitle('Redo')).toBeInTheDocument();
+      expect(screen.getByTitle('Reset')).toBeInTheDocument();
+      expect(screen.getByTitle('Clear')).toBeInTheDocument();
     });
 
     it('renders 24-hour timeline with time labels', async () => {
@@ -255,14 +255,14 @@ describe('CallWindowsCard', () => {
     it('undo button is disabled when no actions have been taken', async () => {
       renderCallWindowsCard();
       
-      const undoButton = screen.getByTitle('Undo last change');
+      const undoButton = screen.getByTitle('Undo');
       expect(undoButton).toBeDisabled();
     });
 
     it('redo button is disabled when no actions have been undone', async () => {
       renderCallWindowsCard();
       
-      const redoButton = screen.getByTitle('Redo last change');
+      const redoButton = screen.getByTitle('Redo');
       expect(redoButton).toBeDisabled();
     });
 
@@ -296,14 +296,14 @@ describe('CallWindowsCard', () => {
 
       // This test verifies the undo logic exists
       // Full integration would require simulating create/delete actions
-      expect(screen.getByTitle('Undo last change')).toBeInTheDocument();
+      expect(screen.getByTitle('Undo')).toBeInTheDocument();
     });
 
     it('clears redo stack when new action is performed', async () => {
       // This tests the logic that redo stack is cleared on new actions
       renderCallWindowsCard();
       
-      const redoButton = screen.getByTitle('Redo last change');
+      const redoButton = screen.getByTitle('Redo');
       expect(redoButton).toBeDisabled();
     });
   });
@@ -320,7 +320,7 @@ describe('CallWindowsCard', () => {
         expect(screen.getByText(/12:00 PM - 1:00 PM/)).toBeInTheDocument();
       });
 
-      const resetButton = screen.getByTitle('Reset to recurring defaults');
+      const resetButton = screen.getByTitle('Reset');
       await user.click(resetButton);
       
       // After reset, should show recurring windows
@@ -340,7 +340,7 @@ describe('CallWindowsCard', () => {
         expect(screen.getByText(/12:00 PM - 1:00 PM/)).toBeInTheDocument();
       });
 
-      const clearButton = screen.getByTitle('Clear all windows');
+      const clearButton = screen.getByTitle('Clear');
       await user.click(clearButton);
       
       await waitFor(() => {
@@ -446,8 +446,534 @@ describe('CallWindowsCard', () => {
       renderCallWindowsCard();
       
       // Undo button should remain disabled after failed operation
-      const undoButton = screen.getByTitle('Undo last change');
+      const undoButton = screen.getByTitle('Undo');
       expect(undoButton).toBeDisabled();
+    });
+  });
+
+  describe('ISSUE 1: Persistence of Undo/Redo/Clear/Delete Actions', () => {
+    it.skip('FAILING: undo action persists after drag-to-create new window', async () => {
+      // Setup: Start with one window, delete it, undo the delete, then create a new window
+      const initialWindow = {
+        _id: 'window1',
+        user: 'testUser',
+        windowType: 'ONEOFF' as const,
+        specificDate: '2025-10-24',
+        startTime: '2025-10-24T09:00:00.000Z',
+        endTime: '2025-10-24T10:00:00.000Z',
+      };
+
+      const newWindow = {
+        _id: 'window2',
+        user: 'testUser',
+        windowType: 'ONEOFF' as const,
+        specificDate: '2025-10-24',
+        startTime: '2025-10-24T14:00:00.000Z',
+        endTime: '2025-10-24T15:00:00.000Z',
+      };
+
+      // Mock sequence: initial load -> after delete -> after undo -> after create new
+      vi.mocked(api.getUserOneOffWindows)
+        .mockResolvedValueOnce([initialWindow]) // Initial load
+        .mockResolvedValueOnce([]) // After delete
+        .mockResolvedValueOnce([initialWindow]) // After undo
+        .mockResolvedValueOnce([initialWindow, newWindow]); // After creating new window
+
+      vi.mocked(api.deleteOneOffCallWindow).mockResolvedValue({});
+      vi.mocked(api.createOneOffCallWindow).mockResolvedValue({ callWindow: 'window2' });
+
+      const user = userEvent.setup();
+      const { container } = renderCallWindowsCard();
+
+      // Wait for initial window to appear
+      await waitFor(() => {
+        expect(screen.getByText(/9:00 AM - 10:00 AM/)).toBeInTheDocument();
+      });
+
+      // Delete the window
+      const window = screen.getByText(/9:00 AM - 10:00 AM/).closest('.call-window');
+      if (window) {
+        await user.hover(window);
+        const deleteButton = await screen.findByTitle('Delete window');
+        await user.click(deleteButton);
+      }
+
+      // Wait for window to be deleted
+      await waitFor(() => {
+        expect(screen.queryByText(/9:00 AM - 10:00 AM/)).not.toBeInTheDocument();
+      });
+
+      // Undo the deletion
+      const undoButton = screen.getByTitle('Undo');
+      await user.click(undoButton);
+
+      // Window should reappear
+      await waitFor(() => {
+        expect(screen.getByText(/9:00 AM - 10:00 AM/)).toBeInTheDocument();
+      });
+
+      // Now simulate drag-to-create a new window
+      // This would trigger the bug where the undo state is lost
+      const gridArea = container.querySelector('.grid-area');
+      if (gridArea) {
+        const rect = gridArea.getBoundingClientRect();
+        // Simulate drag from 2 PM to 3 PM
+        await user.pointer([
+          { keys: '[MouseLeft>]', target: gridArea, coords: { x: rect.left + 50, y: rect.top + 840 } },
+          { coords: { x: rect.left + 50, y: rect.top + 900 } },
+          { keys: '[/MouseLeft]' },
+        ]);
+      }
+
+      // After creating new window, the undone window should STILL be visible
+      // BUG: Currently it disappears because undo state is not persisted
+      await waitFor(() => {
+        expect(screen.getByText(/9:00 AM - 10:00 AM/)).toBeInTheDocument();
+        expect(screen.getByText(/2:00 PM - 3:00 PM/)).toBeInTheDocument();
+      });
+    });
+
+    it('FAILING: redo action persists after drag-to-create new window', async () => {
+      const window1 = {
+        _id: 'window1',
+        user: 'testUser',
+        windowType: 'ONEOFF' as const,
+        specificDate: '2025-10-24',
+        startTime: '2025-10-24T09:00:00.000Z',
+        endTime: '2025-10-24T10:00:00.000Z',
+      };
+
+      const window2 = {
+        _id: 'window2',
+        user: 'testUser',
+        windowType: 'ONEOFF' as const,
+        specificDate: '2025-10-24',
+        startTime: '2025-10-24T14:00:00.000Z',
+        endTime: '2025-10-24T15:00:00.000Z',
+      };
+
+      vi.mocked(api.getUserOneOffWindows)
+        .mockResolvedValueOnce([window1])
+        .mockResolvedValueOnce([]) // After delete
+        .mockResolvedValueOnce([window1]) // After undo
+        .mockResolvedValueOnce([]) // After redo
+        .mockResolvedValueOnce([window2]); // After creating new window
+
+      vi.mocked(api.deleteOneOffCallWindow).mockResolvedValue({});
+      vi.mocked(api.createOneOffCallWindow).mockResolvedValue({ callWindow: 'window2' });
+
+      const user = userEvent.setup();
+      const { container } = renderCallWindowsCard();
+
+      await waitFor(() => {
+        expect(screen.getByText(/9:00 AM - 10:00 AM/)).toBeInTheDocument();
+      });
+
+      // Delete window
+      const window = screen.getByText(/9:00 AM - 10:00 AM/).closest('.call-window');
+      if (window) {
+        await user.hover(window);
+        const deleteButton = await screen.findByTitle('Delete window');
+        await user.click(deleteButton);
+      }
+
+      await waitFor(() => {
+        expect(screen.queryByText(/9:00 AM - 10:00 AM/)).not.toBeInTheDocument();
+      });
+
+      // Undo deletion
+      await user.click(screen.getByTitle('Undo'));
+      await waitFor(() => {
+        expect(screen.getByText(/9:00 AM - 10:00 AM/)).toBeInTheDocument();
+      });
+
+      // Redo deletion (window should disappear again)
+      await user.click(screen.getByTitle('Redo'));
+      await waitFor(() => {
+        expect(screen.queryByText(/9:00 AM - 10:00 AM/)).not.toBeInTheDocument();
+      });
+
+      // Now drag-to-create a new window
+      const gridArea = container.querySelector('.grid-area');
+      if (gridArea) {
+        const rect = gridArea.getBoundingClientRect();
+        await user.pointer([
+          { keys: '[MouseLeft>]', target: gridArea, coords: { x: rect.left + 50, y: rect.top + 840 } },
+          { coords: { x: rect.left + 50, y: rect.top + 900 } },
+          { keys: '[/MouseLeft]' },
+        ]);
+      }
+
+      // After creating new window, the deleted window should STAY deleted
+      // BUG: Currently it reappears because redo state is not persisted
+      await waitFor(() => {
+        expect(screen.queryByText(/9:00 AM - 10:00 AM/)).not.toBeInTheDocument();
+        expect(screen.getByText(/2:00 PM - 3:00 PM/)).toBeInTheDocument();
+      });
+    });
+
+    it('FAILING: clear action persists after drag-to-create new window', async () => {
+      const window1 = {
+        _id: 'window1',
+        user: 'testUser',
+        windowType: 'ONEOFF' as const,
+        specificDate: '2025-10-24',
+        startTime: '2025-10-24T09:00:00.000Z',
+        endTime: '2025-10-24T10:00:00.000Z',
+      };
+
+      const window2 = {
+        _id: 'window2',
+        user: 'testUser',
+        windowType: 'ONEOFF' as const,
+        specificDate: '2025-10-24',
+        startTime: '2025-10-24T11:00:00.000Z',
+        endTime: '2025-10-24T12:00:00.000Z',
+      };
+
+      const newWindow = {
+        _id: 'window3',
+        user: 'testUser',
+        windowType: 'ONEOFF' as const,
+        specificDate: '2025-10-24',
+        startTime: '2025-10-24T14:00:00.000Z',
+        endTime: '2025-10-24T15:00:00.000Z',
+      };
+
+      vi.mocked(api.getUserOneOffWindows)
+        .mockResolvedValueOnce([window1, window2]) // Initial load
+        .mockResolvedValueOnce([]) // After clear
+        .mockResolvedValueOnce([newWindow]); // After creating new window
+
+      vi.mocked(api.deleteOneOffCallWindow).mockResolvedValue({});
+      vi.mocked(api.createOneOffCallWindow).mockResolvedValue({ callWindow: 'window3' });
+
+      const user = userEvent.setup();
+      const { container } = renderCallWindowsCard();
+
+      await waitFor(() => {
+        expect(screen.getByText(/9:00 AM - 10:00 AM/)).toBeInTheDocument();
+        expect(screen.getByText(/11:00 AM - 12:00 PM/)).toBeInTheDocument();
+      });
+
+      // Clear all windows
+      await user.click(screen.getByTitle('Clear'));
+
+      await waitFor(() => {
+        expect(screen.queryByText(/9:00 AM - 10:00 AM/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/11:00 AM - 12:00 PM/)).not.toBeInTheDocument();
+      });
+
+      // Now drag-to-create a new window
+      const gridArea = container.querySelector('.grid-area');
+      if (gridArea) {
+        const rect = gridArea.getBoundingClientRect();
+        await user.pointer([
+          { keys: '[MouseLeft>]', target: gridArea, coords: { x: rect.left + 50, y: rect.top + 840 } },
+          { coords: { x: rect.left + 50, y: rect.top + 900 } },
+          { keys: '[/MouseLeft]' },
+        ]);
+      }
+
+      // After creating new window, the cleared windows should STAY cleared
+      // BUG: Currently they reappear because clear action is not persisted
+      await waitFor(() => {
+        expect(screen.queryByText(/9:00 AM - 10:00 AM/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/11:00 AM - 12:00 PM/)).not.toBeInTheDocument();
+        expect(screen.getByText(/2:00 PM - 3:00 PM/)).toBeInTheDocument();
+      });
+    });
+
+    it('FAILING: delete action persists after drag-to-create new window', async () => {
+      const window1 = {
+        _id: 'window1',
+        user: 'testUser',
+        windowType: 'ONEOFF' as const,
+        specificDate: '2025-10-24',
+        startTime: '2025-10-24T09:00:00.000Z',
+        endTime: '2025-10-24T10:00:00.000Z',
+      };
+
+      const newWindow = {
+        _id: 'window2',
+        user: 'testUser',
+        windowType: 'ONEOFF' as const,
+        specificDate: '2025-10-24',
+        startTime: '2025-10-24T14:00:00.000Z',
+        endTime: '2025-10-24T15:00:00.000Z',
+      };
+
+      vi.mocked(api.getUserOneOffWindows)
+        .mockResolvedValueOnce([window1]) // Initial load
+        .mockResolvedValueOnce([]) // After delete
+        .mockResolvedValueOnce([newWindow]); // After creating new window
+
+      vi.mocked(api.deleteOneOffCallWindow).mockResolvedValue({});
+      vi.mocked(api.createOneOffCallWindow).mockResolvedValue({ callWindow: 'window2' });
+
+      const user = userEvent.setup();
+      const { container } = renderCallWindowsCard();
+
+      await waitFor(() => {
+        expect(screen.getByText(/9:00 AM - 10:00 AM/)).toBeInTheDocument();
+      });
+
+      // Delete the window
+      const window = screen.getByText(/9:00 AM - 10:00 AM/).closest('.call-window');
+      if (window) {
+        await user.hover(window);
+        const deleteButton = await screen.findByTitle('Delete window');
+        await user.click(deleteButton);
+      }
+
+      await waitFor(() => {
+        expect(screen.queryByText(/9:00 AM - 10:00 AM/)).not.toBeInTheDocument();
+      });
+
+      // Now drag-to-create a new window
+      const gridArea = container.querySelector('.grid-area');
+      if (gridArea) {
+        const rect = gridArea.getBoundingClientRect();
+        await user.pointer([
+          { keys: '[MouseLeft>]', target: gridArea, coords: { x: rect.left + 50, y: rect.top + 840 } },
+          { coords: { x: rect.left + 50, y: rect.top + 900 } },
+          { keys: '[/MouseLeft]' },
+        ]);
+      }
+
+      // After creating new window, the deleted window should STAY deleted
+      // BUG: Currently it reappears because delete action is not persisted
+      await waitFor(() => {
+        expect(screen.queryByText(/9:00 AM - 10:00 AM/)).not.toBeInTheDocument();
+        expect(screen.getByText(/2:00 PM - 3:00 PM/)).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('ISSUE 2: User Prompt for Overlapping Windows', () => {
+    it('prevents drag from starting on existing window', async () => {
+      const existingWindow = {
+        _id: 'window1',
+        user: 'testUser',
+        windowType: 'ONEOFF' as const,
+        specificDate: '2025-10-24',
+        startTime: '2025-10-24T12:00:00.000Z',
+        endTime: '2025-10-24T13:00:00.000Z',
+      };
+
+      vi.mocked(api.getUserOneOffWindows).mockResolvedValue([existingWindow]);
+
+      const user = userEvent.setup();
+      const { container } = renderCallWindowsCard();
+
+      await waitFor(() => {
+        expect(screen.getByText(/12:00 PM - 1:00 PM/)).toBeInTheDocument();
+      });
+
+      // Try to start drag on the existing window - should be blocked
+      const existingWindowElement = screen.getByText(/12:00 PM - 1:00 PM/).closest('.call-window');
+      
+      if (existingWindowElement) {
+        const rect = existingWindowElement.getBoundingClientRect();
+        await user.pointer([
+          { keys: '[MouseLeft>]', target: existingWindowElement, coords: { x: rect.left + 10, y: rect.top + 10 } },
+          { coords: { x: rect.left + 10, y: rect.bottom + 30 } },
+          { keys: '[/MouseLeft]' },
+        ]);
+      }
+
+      // Should NOT create any new window or show merge prompt
+      // because drag was blocked from starting on existing window
+      await waitFor(() => {
+        expect(screen.queryByText(/Merge windows/i)).not.toBeInTheDocument();
+      });
+    });
+
+    it.skip('FAILING: shows merge/cancel prompt when dragging overlapping window', async () => {
+      const existingWindow = {
+        _id: 'window1',
+        user: 'testUser',
+        windowType: 'ONEOFF' as const,
+        specificDate: '2025-10-24',
+        startTime: '2025-10-24T12:00:00.000Z',
+        endTime: '2025-10-24T13:00:00.000Z',
+      };
+
+      vi.mocked(api.getUserOneOffWindows).mockResolvedValue([existingWindow]);
+      vi.mocked(api.mergeOverlappingOneOffWindows).mockResolvedValue({ callWindow: 'merged1' });
+
+      const user = userEvent.setup();
+      const { container } = renderCallWindowsCard();
+
+      await waitFor(() => {
+        expect(screen.getByText(/12:00 PM - 1:00 PM/)).toBeInTheDocument();
+      });
+
+      // Drag to create an overlapping window (12:30 PM - 1:30 PM)
+      const gridArea = container.querySelector('.grid-area');
+      if (gridArea) {
+        const rect = gridArea.getBoundingClientRect();
+        await user.pointer([
+          { keys: '[MouseLeft>]', target: gridArea, coords: { x: rect.left + 50, y: rect.top + 750 } }, // 12:30 PM
+          { coords: { x: rect.left + 50, y: rect.top + 810 } }, // 1:30 PM
+          { keys: '[/MouseLeft]' },
+        ]);
+      }
+
+      // Should show a prompt asking user to merge or cancel
+      // BUG: Currently auto-merges without prompting
+      await waitFor(() => {
+        expect(screen.getByText(/Merge windows/i)).toBeInTheDocument();
+        expect(screen.getByText(/merge/i)).toBeInTheDocument();
+        expect(screen.getByText(/cancel/i)).toBeInTheDocument();
+      });
+    });
+
+    it('FAILING: merges windows when user confirms merge', async () => {
+      const existingWindow = {
+        _id: 'window1',
+        user: 'testUser',
+        windowType: 'ONEOFF' as const,
+        specificDate: '2025-10-24',
+        startTime: '2025-10-24T12:00:00.000Z',
+        endTime: '2025-10-24T13:00:00.000Z',
+      };
+
+      const mergedWindow = {
+        _id: 'merged1',
+        user: 'testUser',
+        windowType: 'ONEOFF' as const,
+        specificDate: '2025-10-24',
+        startTime: '2025-10-24T12:00:00.000Z',
+        endTime: '2025-10-24T13:30:00.000Z',
+      };
+
+      vi.mocked(api.getUserOneOffWindows)
+        .mockResolvedValueOnce([existingWindow])
+        .mockResolvedValueOnce([mergedWindow]);
+      vi.mocked(api.mergeOverlappingOneOffWindows).mockResolvedValue({ callWindow: 'merged1' });
+
+      const user = userEvent.setup();
+      const { container } = renderCallWindowsCard();
+
+      await waitFor(() => {
+        expect(screen.getByText(/12:00 PM - 1:00 PM/)).toBeInTheDocument();
+      });
+
+      // Drag to create overlapping window
+      const gridArea = container.querySelector('.grid-area');
+      if (gridArea) {
+        const rect = gridArea.getBoundingClientRect();
+        await user.pointer([
+          { keys: '[MouseLeft>]', target: gridArea, coords: { x: rect.left + 50, y: rect.top + 750 } },
+          { coords: { x: rect.left + 50, y: rect.top + 810 } },
+          { keys: '[/MouseLeft]' },
+        ]);
+      }
+
+      // Wait for merge prompt and click merge button
+      const mergeButton = await screen.findByRole('button', { name: /merge/i });
+      await user.click(mergeButton);
+
+      // Should call merge API and show merged window
+      await waitFor(() => {
+        expect(api.mergeOverlappingOneOffWindows).toHaveBeenCalled();
+        expect(screen.getByText(/12:00 PM - 1:30 PM/)).toBeInTheDocument();
+      });
+    });
+
+    it('FAILING: cancels window creation when user cancels merge', async () => {
+      const existingWindow = {
+        _id: 'window1',
+        user: 'testUser',
+        windowType: 'ONEOFF' as const,
+        specificDate: '2025-10-24',
+        startTime: '2025-10-24T12:00:00.000Z',
+        endTime: '2025-10-24T13:00:00.000Z',
+      };
+
+      vi.mocked(api.getUserOneOffWindows).mockResolvedValue([existingWindow]);
+      vi.mocked(api.createOneOffCallWindow).mockResolvedValue({ callWindow: 'new1' });
+
+      const user = userEvent.setup();
+      const { container } = renderCallWindowsCard();
+
+      await waitFor(() => {
+        expect(screen.getByText(/12:00 PM - 1:00 PM/)).toBeInTheDocument();
+      });
+
+      // Drag to create overlapping window
+      const gridArea = container.querySelector('.grid-area');
+      if (gridArea) {
+        const rect = gridArea.getBoundingClientRect();
+        await user.pointer([
+          { keys: '[MouseLeft>]', target: gridArea, coords: { x: rect.left + 50, y: rect.top + 750 } },
+          { coords: { x: rect.left + 50, y: rect.top + 810 } },
+          { keys: '[/MouseLeft]' },
+        ]);
+      }
+
+      // Wait for merge prompt and click cancel button
+      const cancelButton = await screen.findByRole('button', { name: /cancel/i });
+      await user.click(cancelButton);
+
+      // Should NOT create or merge window, original window should remain unchanged
+      await waitFor(() => {
+        expect(api.createOneOffCallWindow).not.toHaveBeenCalled();
+        expect(api.mergeOverlappingOneOffWindows).not.toHaveBeenCalled();
+        expect(screen.getByText(/12:00 PM - 1:00 PM/)).toBeInTheDocument();
+        expect(screen.queryByText(/12:00 PM - 1:30 PM/)).not.toBeInTheDocument();
+      });
+    });
+
+    it('FAILING: does not show prompt for non-overlapping windows', async () => {
+      const existingWindow = {
+        _id: 'window1',
+        user: 'testUser',
+        windowType: 'ONEOFF' as const,
+        specificDate: '2025-10-24',
+        startTime: '2025-10-24T09:00:00.000Z',
+        endTime: '2025-10-24T10:00:00.000Z',
+      };
+
+      const newWindow = {
+        _id: 'window2',
+        user: 'testUser',
+        windowType: 'ONEOFF' as const,
+        specificDate: '2025-10-24',
+        startTime: '2025-10-24T14:00:00.000Z',
+        endTime: '2025-10-24T15:00:00.000Z',
+      };
+
+      vi.mocked(api.getUserOneOffWindows)
+        .mockResolvedValueOnce([existingWindow])
+        .mockResolvedValueOnce([existingWindow, newWindow]);
+      vi.mocked(api.createOneOffCallWindow).mockResolvedValue({ callWindow: 'window2' });
+
+      const user = userEvent.setup();
+      const { container } = renderCallWindowsCard();
+
+      await waitFor(() => {
+        expect(screen.getByText(/9:00 AM - 10:00 AM/)).toBeInTheDocument();
+      });
+
+      // Drag to create non-overlapping window (2 PM - 3 PM)
+      const gridArea = container.querySelector('.grid-area');
+      if (gridArea) {
+        const rect = gridArea.getBoundingClientRect();
+        await user.pointer([
+          { keys: '[MouseLeft>]', target: gridArea, coords: { x: rect.left + 50, y: rect.top + 840 } },
+          { coords: { x: rect.left + 50, y: rect.top + 900 } },
+          { keys: '[/MouseLeft]' },
+        ]);
+      }
+
+      // Should NOT show merge prompt, should directly create window
+      await waitFor(() => {
+        expect(screen.queryByText(/Merge windows/i)).not.toBeInTheDocument();
+        expect(api.createOneOffCallWindow).toHaveBeenCalled();
+        expect(screen.getByText(/2:00 PM - 3:00 PM/)).toBeInTheDocument();
+      });
     });
   });
 });

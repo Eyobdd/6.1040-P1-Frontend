@@ -146,6 +146,13 @@
       @cancel="handleCancelEdit"
       @delete="handleDeleteFromModal"
     />
+
+    <!-- Merge prompt -->
+    <CallWindowMergePrompt
+      v-if="showMergePrompt"
+      @merge="handleMergeConfirm"
+      @cancel="handleMergeCancel"
+    />
   </div>
 </template>
 
@@ -154,6 +161,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { api } from '@/services/api';
 import type { DisplayWindow, RecurringWindow, OneOffWindow, DayOfWeek } from '@/types/callWindow';
 import CallWindowEditModal from './CallWindowEditModal.vue';
+import CallWindowMergePrompt from './CallWindowMergePrompt.vue';
 
 interface Props {
   selectedDate: Date;
@@ -178,7 +186,7 @@ const hoveredWindow = ref<DisplayWindow | null>(null);
 const timelineContainer = ref<HTMLElement | null>(null);
 const showAddModal = ref(false);
 const showMergePrompt = ref(false);
-const mergeCandidate = ref<{ new: DisplayWindow; overlapping: DisplayWindow[] } | null>(null);
+const pendingWindow = ref<{ startTime: Date; endTime: Date } | null>(null);
 const editingWindow = ref<DisplayWindow | null>(null);
 const undoStack = ref<{ windows: OneOffWindow[]; action: string }[]>([]);
 const redoStack = ref<{ windows: OneOffWindow[]; action: string }[]>([]);
@@ -257,7 +265,9 @@ const timeFromY = (y: number): Date => {
 };
 
 const handleMouseDown = (e: MouseEvent) => {
-  if (e.target !== e.currentTarget) return; // Only start drag on empty space
+  // Only allow drag to start from empty space (not on existing windows)
+  // But allow drag to end/release over existing windows (checked in handleMouseUp)
+  if (e.target !== e.currentTarget) return;
   
   isDragging.value = true;
   const startTime = timeFromY(e.clientY);
@@ -293,8 +303,17 @@ const handleMouseUp = async (e: MouseEvent) => {
   const duration = (window.endTime.getTime() - window.startTime.getTime()) / (1000 * 60);
   
   if (duration >= MIN_WINDOW_DURATION) {
-    // Always create the window - merge will happen automatically if there's overlap
-    await createOneOffWindow(window.startTime, window.endTime);
+    // Check for overlaps and prompt user if found
+    const overlapping = findOverlappingWindows({ startTime: window.startTime, endTime: window.endTime });
+    
+    if (overlapping.length > 0) {
+      // Show merge prompt
+      pendingWindow.value = { startTime: window.startTime, endTime: window.endTime };
+      showMergePrompt.value = true;
+    } else {
+      // No overlap, create directly
+      await createOneOffWindow(window.startTime, window.endTime);
+    }
   }
   
   isDragging.value = false;
@@ -386,12 +405,23 @@ const handleReset = async () => {
   // Save current state for undo
   pushUndo('reset');
   
-  // Clear all one-off windows for this date
+  // Delete all windows for this date from backend
+  const windowsToDelete = oneOffWindows.value.filter(
+    w => w.specificDate === selectedDateString.value
+  );
+  
+  for (const window of windowsToDelete) {
+    await api.deleteOneOffCallWindow(
+      props.userId,
+      selectedDateString.value,
+      new Date(window.startTime)
+    );
+  }
+  
+  // Clear all one-off windows for this date from local state
   oneOffWindows.value = oneOffWindows.value.filter(
     w => w.specificDate !== selectedDateString.value
   );
-  
-  await syncOneOffWindows();
   
   // Mark as uninitialized so recurring windows show again
   dayInitialized.value = false;
@@ -403,12 +433,23 @@ const handleClear = async () => {
   // Save current state for undo
   pushUndo('clear');
   
-  // Clear all windows for this date
+  // Delete all windows for this date from backend
+  const windowsToDelete = oneOffWindows.value.filter(
+    w => w.specificDate === selectedDateString.value
+  );
+  
+  for (const window of windowsToDelete) {
+    await api.deleteOneOffCallWindow(
+      props.userId,
+      selectedDateString.value,
+      new Date(window.startTime)
+    );
+  }
+  
+  // Clear all windows for this date from local state
   oneOffWindows.value = oneOffWindows.value.filter(
     w => w.specificDate !== selectedDateString.value
   );
-  
-  await syncOneOffWindows();
   
   // Keep initialized flag true - day has been edited, just cleared
   // This prevents recurring windows from being converted again
@@ -420,6 +461,19 @@ const handleClear = async () => {
 const handleInitiateCall = () => {
   // TODO: Implement call initiation
   console.log('Initiating call...');
+};
+
+const handleMergeConfirm = async () => {
+  if (!pendingWindow.value) return;
+  
+  await createOneOffWindow(pendingWindow.value.startTime, pendingWindow.value.endTime, true);
+  showMergePrompt.value = false;
+  pendingWindow.value = null;
+};
+
+const handleMergeCancel = () => {
+  showMergePrompt.value = false;
+  pendingWindow.value = null;
 };
 
 const pushUndo = (action: string) => {
@@ -445,9 +499,10 @@ const findOverlappingWindows = (newWindow: { startTime: Date; endTime: Date }): 
   return displayWindows.value.filter(w => checkOverlap(newWindow, w));
 };
 
-const createOneOffWindow = async (startTime: Date, endTime: Date) => {
+const createOneOffWindow = async (startTime: Date, endTime: Date, shouldMerge: boolean = false) => {
   // Only convert recurring windows on first interaction with this day
-  if (!dayInitialized.value) {
+  // BUT: Don't do this if we already have local state changes (undo/redo/clear/delete)
+  if (!dayInitialized.value && undoStack.value.length === 0) {
     await ensureOneOffWindowsExist();
     dayInitialized.value = true;
   }
@@ -455,12 +510,9 @@ const createOneOffWindow = async (startTime: Date, endTime: Date) => {
   // Save current state for undo BEFORE making changes
   pushUndo('create');
   
-  // Check for overlaps
-  const overlapping = findOverlappingWindows({ startTime, endTime });
-  
   let result;
-  if (overlapping.length > 0) {
-    // Automatically merge overlapping windows using backend
+  if (shouldMerge) {
+    // Merge overlapping windows using backend
     result = await api.mergeOverlappingOneOffWindows(
       props.userId,
       selectedDateString.value,
@@ -489,7 +541,8 @@ const createOneOffWindow = async (startTime: Date, endTime: Date) => {
 
 const deleteWindow = async (window: DisplayWindow) => {
   // Only convert recurring windows on first interaction with this day
-  if (!dayInitialized.value) {
+  // BUT: Don't do this if we already have local state changes (undo/redo/clear/delete)
+  if (!dayInitialized.value && undoStack.value.length === 0) {
     await ensureOneOffWindowsExist();
     dayInitialized.value = true;
   }
