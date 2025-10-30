@@ -41,8 +41,7 @@
             <span class="nav-label">Journal</span>
           </router-link>
 
-          <!-- Schedule option temporarily hidden -->
-          <!-- <router-link 
+          <router-link 
             to="/schedule" 
             class="nav-item" 
             :class="{ active: activeItem === 'schedule', hovering: hoveredItem === 'schedule' }"
@@ -52,7 +51,7 @@
           >
             <v-icon class="nav-icon">mdi-calendar-outline</v-icon>
             <span class="nav-label">Schedule</span>
-          </router-link> -->
+          </router-link>
         </div>
 
         <!-- Bottom items -->
@@ -125,26 +124,17 @@
             </div>
           </div>
 
-          <!-- Schedule panel temporarily hidden -->
-          <!-- <div v-if="hoveredItem === 'schedule'" class="panel-content">
+          <div v-if="hoveredItem === 'schedule'" class="panel-content">
             <div class="panel-header">
               <h3>Schedule</h3>
             </div>
             <div class="panel-items">
-              <div class="panel-item">
+              <router-link to="/schedule" class="panel-item">
                 <v-icon size="18" class="item-icon">mdi-calendar-clock</v-icon>
-                <span>Upcoming calls</span>
-              </div>
-              <div class="panel-item">
-                <v-icon size="18" class="item-icon">mdi-calendar-check</v-icon>
-                <span>Availability</span>
-              </div>
-              <div class="panel-item">
-                <v-icon size="18" class="item-icon">mdi-history</v-icon>
-                <span>Past calls</span>
-              </div>
+                <span>Weekly Schedule</span>
+              </router-link>
             </div>
-          </div> -->
+          </div>
 
           <div v-if="hoveredItem === 'account'" class="panel-content">
             <div class="panel-header">

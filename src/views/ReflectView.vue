@@ -122,7 +122,13 @@ async function loadPromptsAndStartSession() {
     currentUser.value = authResult.user;
 
     // Check if there's already a completed entry for today
-    const today = new Date().toISOString().split('T')[0];
+    // NOTE: Backend now uses user's timezone from profile to extract dates
+    // So we send the local date string directly (YYYY-MM-DD in user's timezone)
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const today = `${year}-${month}-${day}`;
     const entryResult = await api.getEntryByDate(authResult.user, today);
     
     if (entryResult && '_id' in entryResult) {
@@ -140,12 +146,16 @@ async function loadPromptsAndStartSession() {
 
     // Get active prompts (only active ones from user's current settings)
     const promptsResult = await api.getActivePrompts(authResult.user);
+    console.log('Active prompts result:', promptsResult);
+    
     if (Array.isArray(promptsResult) && promptsResult.length > 0) {
       prompts.value = promptsResult;
       responses.value = new Array(promptsResult.length).fill('');
+      console.log('Loaded prompts:', prompts.value);
     } else {
-      alert('No prompts found. Please contact support.');
-      router.push('/');
+      console.error('No active prompts found. Result:', promptsResult);
+      alert('No active prompts found. Please activate at least one prompt in the Current Prompts page.');
+      router.push('/journal/prompts');
       return;
     }
 
@@ -154,7 +164,7 @@ async function loadPromptsAndStartSession() {
     const sessionResult = await api.startSession(
       authResult.user,
       callSessionId,
-      promptsResult.map((p: any) => ({
+      prompts.value.map((p: any) => ({
         promptId: p._id,
         promptText: p.promptText,
       }))
@@ -169,8 +179,16 @@ async function loadPromptsAndStartSession() {
       return;
     }
 
-    sessionId.value = sessionResult.session!;
+    if (!sessionResult.session) {
+      console.error('Session result missing session ID:', sessionResult);
+      alert('Failed to start reflection session - no session ID returned');
+      router.push('/');
+      return;
+    }
+
+    sessionId.value = sessionResult.session;
     loading.value = false;
+    console.log('Session started successfully:', sessionId.value);
   } catch (e) {
     console.error('Failed to start session:', e);
     alert('Failed to start reflection session');

@@ -144,8 +144,15 @@ async function loadEntryForDate() {
     currentUser.value = authResult.user;
 
     // Get entry for selected date
-    const dateString = selectedDate.value.toISOString().split('T')[0];
+    // NOTE: Backend now uses user's timezone from profile to extract dates
+    // So we send the local date string directly (YYYY-MM-DD in user's timezone)
+    const year = selectedDate.value.getFullYear();
+    const month = String(selectedDate.value.getMonth() + 1).padStart(2, '0');
+    const day = String(selectedDate.value.getDate()).padStart(2, '0');
+    const dateString = `${year}-${month}-${day}`;
     const entryResult = await api.getEntryByDate(authResult.user, dateString);
+    console.log('Entry result:', entryResult);
+    console.log('Date string:', dateString);
 
     if (entryResult && '_id' in entryResult) {
       dayEntry.value = entryResult;

@@ -201,6 +201,8 @@ For detailed technical architecture and design decisions, see [DESIGN_DECISIONS.
 
 ## Demo Resources
 
-**Demo Video**: [Watch Demo](https://drive.google.com/drive/folders/1wCEFdIfzZFHb8dUq44cAn1EL8Gytx3iP?usp=sharing)
+**Check-in Demo Video**: [Watch Demo](https://drive.google.com/drive/folders/1wCEFdIfzZFHb8dUq44cAn1EL8Gytx3iP?usp=sharing)
+
+**Final Demo Video**: [Watch Demo](https://drive.google.com/file/d/1Ug-P3ffEOWVyustdMUfCCTaJjm2Urpv2/view?usp=drive_link)
 
 **Visual Study**: [View Presentation](https://docs.google.com/presentation/d/1cQrGP7oN5plS4rN582qL5Sk_6K4fy6X4fv93hbpv4oQ/edit?usp=sharing)

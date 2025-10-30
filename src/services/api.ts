@@ -264,6 +264,27 @@ class ApiService {
       endTime: endTime.toISOString(),
     });
   }
+
+  async setDayModeCustom(user: string, date: string) {
+    return this.post<{ dayMode?: string; error?: string }>('CallWindow/setDayModeCustom', {
+      user,
+      date,
+    });
+  }
+
+  async setDayModeRecurring(user: string, date: string) {
+    return this.post<{ dayMode?: string; error?: string }>('CallWindow/setDayModeRecurring', {
+      user,
+      date,
+    });
+  }
+
+  async shouldUseRecurring(user: string, date: string) {
+    return this.post<boolean>('CallWindow/shouldUseRecurring', {
+      user,
+      date,
+    });
+  }
 }
 
 export const api = new ApiService();

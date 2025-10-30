@@ -161,12 +161,16 @@ async function handleSignup() {
     return;
   }
 
-  // Create profile
+  // Detect user's timezone
+  const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  console.log('Detected timezone:', userTimezone);
+
+  // Create profile with detected timezone
   await api.createProfile(
     userId,
     'User',
     phoneNumber.value,
-    'America/New_York'
+    userTimezone
   );
 
   // Create default prompts
