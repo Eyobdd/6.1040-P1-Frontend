@@ -2,6 +2,47 @@
 
 This document records the architectural and design decisions made for this project.
 
+## Major Frontend Design Changes Summary
+
+### Recent Enhancements (October 2024)
+
+**1. Call Window Management System**
+- **Day Mode Architecture**: Implemented recurring vs custom mode tracking for each day
+  - Recurring mode (default): Shows weekly schedule windows
+  - Custom mode: Shows day-specific one-off windows
+  - Automatic conversion on first edit
+  - Clear vs Reset distinction (Clear stays custom, Reset returns to recurring)
+- **Automatic Window Merging**: Overlapping windows merge automatically using backend API
+- **Enhanced UI/UX**: Scrollable timeline (700px max-height), typeable time inputs, inline delete icons
+- **Undo/Redo System**: Full state management with 10-action limit and redo support
+
+**2. Recurring Week Scheduler**
+- **Complete Rebuild**: New component for managing weekly recurring availability template
+- **Grid Alignment Fix**: Unified grid approach with sticky headers ensures perfect column alignment
+- **Drag-to-Create Fix**: Resolved vertical cursor offset by accounting for header height in calculations
+- **Multi-Day Creation**: Modal allows creating windows across multiple days simultaneously
+- **Time Conversion**: Proper handling between frontend (minutes) and backend (ISO strings)
+
+**3. Journal & Reflection Features**
+- **Optional Rating System**: Users can toggle day rating on/off in preferences
+  - Stored in Profile concept (`includeRating` field)
+  - Reflection sessions adapt automatically
+  - Entries support optional ratings (default to 0)
+- **Active Prompts Filtering**: Only active prompts appear in reflection sessions
+- **Immutable Snapshots**: Past entries preserve original prompts and responses
+- **Optimized Queries**: `getEntriesWithResponsesByUser` returns entries with responses in single call
+
+**4. Component Testing**
+- **CallWindowsCard**: 40+ comprehensive unit tests covering window management, undo/redo, overlap detection
+- **ReflectView**: 9 tests verifying prompt loading, active filtering, rating preference
+- All tests use Vitest with mocked API responses for isolation
+
+**5. Design System Refinements**
+- **Color Consistency**: Teal accent `#20808d` across all interactive elements
+- **Border Updates**: Changed from `#e5e5dd` to `#e4e4e4` for cleaner appearance
+- **Hero Headers**: Consistent Georgia serif 48px titles across major pages
+- **Background**: Unified `#fcfcf9` background across cards and pages
+
 ## Testing
 
 - **Framework**: Vitest and Vue Testing Library are used for unit and component testing.
@@ -54,32 +95,78 @@ This document records the architectural and design decisions made for this proje
 - **Color Scheme**: Teal accent (`#20808d`) for interactive elements and active states
 - **Typography**: System font stack with clean, modern appearance
 
+### RecurringWeekScheduler Component
+
+**Purpose**: Weekly template for managing recurring call availability across all days of the week
+
+**Key Features**:
+- **Weekly Grid Layout**: 7-column grid (Mon-Sun) with 24-hour timeline for each day
+- **Sticky Headers**: Day labels remain visible while scrolling through time slots
+- **Grid Alignment**: Unified grid approach with `grid-template-columns: 60px repeat(7, 1fr)` ensures perfect column alignment
+- **Drag-to-Create**: Click and drag on any day column to create recurring windows
+  - Fixed vertical cursor offset by accounting for sticky header height in position calculation
+  - Global mouse listeners during drag for smooth interaction
+- **Multi-Day Add Modal**: Create windows across multiple days simultaneously
+  - Checkbox selection for days (must select at least one)
+  - Single time input applies to all selected days
+- **Per-Column Clear**: Individual clear buttons for each day (disabled when empty)
+- **Undo/Redo**: Page-level undo/redo in header (10-action limit)
+- **Time Conversion**: Frontend uses minutes from midnight (0-1440), backend uses ISO strings
+  - Helper functions: `timeStringToMinutes()` and `minutesToTimeString()`
+
+**Interaction Patterns**:
+- Click and drag on day column: Creates recurring window for that day
+- Click Add button: Opens modal to select multiple days
+- Click window: Opens edit modal for that specific window
+- Click column clear: Removes all windows for that day only
+- Undo/Redo: Restores previous states across all days
+
+**Styling**:
+- Hero header matching JournalView design (Georgia serif 48px, teal icon)
+- Background: `#fcfcf9` (matches page background)
+- Teal accent: `#20808d` for windows and interactive elements
+- Smooth 0.3s transitions for all interactions
+- Clean, modern Google Calendar + Notion aesthetic
+
+**Technical Details**:
+- Drag calculation: `clientY - rect.top + scrollTop - headerHeight`
+- Full backend sync on every change (delete all → create all → reload)
+- All 12 unit tests passing
+
 ### CallWindowsCard Component
 
 **Purpose**: Interactive timeline for managing daily call availability windows
 
 **Key Features**:
-- **24-Hour Timeline**: Vertical grid with 15-minute increments, scrollable with fixed header
+- **24-Hour Timeline**: Vertical grid with 15-minute increments, scrollable with fixed header (max-height: 700px)
 - **Drag-to-Create**: Click and drag on timeline to create new windows (5-minute minimum)
 - **Automatic Merging**: Overlapping windows automatically merge without user prompt
+  - Backend `mergeOverlappingOneOffWindows` API handles overlap detection
+  - Merges by taking earliest start time and latest end time
 - **Undo/Redo**: Full undo/redo support with visual feedback (mdi-undo-variant/mdi-redo-variant icons)
-- **Recurring vs One-Off**: 
-  - Displays recurring windows as dashed borders when no one-off windows exist
-  - First edit converts recurring windows to one-off windows for that specific day
-  - Prevents ghost windows from appearing after undo operations
+  - 10-action undo stack limit
+  - Redo stack clears on new actions
+- **Day Mode System**: Tracks whether each day uses recurring (default) or custom (one-off) windows
+  - **Recurring Mode** (`useRecurring = true`): Shows recurring windows from weekly schedule
+  - **Custom Mode** (`useRecurring = false`): Shows one-off windows (might be empty)
+  - First edit automatically converts to custom mode
+  - Clear keeps day in custom mode (empty)
+  - Reset returns to recurring mode
 - **Visual Grouping**: Button dividers separate action groups (Add | Undo/Redo | Reset/Clear)
 
 **Interaction Patterns**:
 - Hover over window: Shows delete icon inline
-- Click window: Opens edit modal with typeable time inputs
-- Reset: Clears one-off windows, reverts to recurring defaults
-- Clear: Removes all windows for the day
+- Click window: Opens edit modal with typeable time inputs (number inputs with validation)
+- Reset: Deletes one-off windows, sets `useRecurring = true`, shows recurring windows
+- Clear: Converts to custom mode if needed, deletes all one-off windows, stays in custom mode
 
 **Styling**:
 - Background: `#fcfcf9` (matches page background)
-- Borders/Lines: `#e4e4e4`
+- Borders/Lines: `#e4e4e4` (updated from `#e5e5dd`)
 - Window color: Teal `#20808d` with 15% opacity fill
 - Circular buttons with dividers for clean, organized header
+- No box-shadow, uses 1px solid border instead
+- Delete icon styled to match window border color
 
 ## Backend Architecture
 

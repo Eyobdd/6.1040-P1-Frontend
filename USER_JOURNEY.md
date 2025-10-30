@@ -19,13 +19,27 @@ Zien is a daily reflection app that helps users maintain clarity and focus throu
 - Enters code and is authenticated
 - Automatically redirected to Day View
 
-#### 2. **Day View Dashboard**
+#### 2. **Setting Up Weekly Schedule**
+- Navigates to **Schedule** in the sidebar
+- Sees the **Recurring Week Scheduler** with 7 day columns (Mon-Sun)
+- Clicks and drags on Monday column from 9:00 AM to 10:00 AM
+- Window appears instantly on Monday
+- Clicks **Add** button in header to create windows for multiple days
+- Selects Tuesday, Wednesday, Thursday checkboxes
+- Sets time: 2:00 PM - 3:00 PM
+- Clicks Create - windows appear on all three days
+- Uses **Clear** button on Friday column to remove a window
+- Clicks **Undo** to restore it
+- Weekly template is now set up and will apply to all future weeks
+
+#### 3. **Day View Dashboard**
+- Returns to **Day View** (sidebar navigation)
 - Sees today's date with a hero icon at the top
-- Views the **Call Windows** card showing available time slots
-- Notices the card is empty (no windows set yet)
+- Views the **Call Windows** card showing today's recurring windows from the weekly schedule
+- Windows displayed with dashed borders (indicating recurring mode)
 - Clicks **"Initiate Call"** button to start first reflection
 
-#### 3. **First Reflection Session**
+#### 4. **First Reflection Session**
 - Enters the **Reflect View** with a clean, focused interface
 - Sees progress bar showing "1 of 5" steps
 - Answers the **4 default prompts** one by one:
@@ -43,12 +57,13 @@ Zien is a daily reflection app that helps users maintain clarity and focus throu
 - Clicks **"Complete"** and sees success message
 - Redirected back to Day View
 
-#### 4. **Viewing Completed Entry**
+#### 5. **Viewing Completed Entry**
 - Day View now shows the **Call Completed** overlay on Call Windows card
 - Grayed out with checkmark icon and message
+- Windows are locked and cannot be edited for completed days
 - Navigates to **Journal** in the sidebar
 
-#### 5. **Past Entries Page**
+#### 6. **Past Entries Page**
 - Sees the first journal entry card with:
   - Date: "Today"
   - Rating badge: ⭐ +1
@@ -56,7 +71,7 @@ Zien is a daily reflection app that helps users maintain clarity and focus throu
   - "+2 more responses" indicator
 - Clicks the card to view full details
 
-#### 6. **Entry Detail Modal**
+#### 7. **Entry Detail Modal**
 - Modal opens showing:
   - Full date: "Today"
   - Rating: "⭐ +1 (Scale: -2 to +2)"
@@ -71,7 +86,23 @@ Zien is a daily reflection app that helps users maintain clarity and focus throu
 
 **Day 2**: Jordan returns to Zien the next day.
 
-#### 7. **Customizing Prompts**
+#### 8. **Customizing a Specific Day**
+- Opens **Day View** for tomorrow
+- Sees recurring windows from weekly schedule (dashed borders)
+- Decides tomorrow needs different availability
+- Clicks and drags to add a new window from 11:00 AM to 12:00 PM
+- System automatically:
+  - Converts all recurring windows to one-off windows for this day
+  - Switches day to **custom mode**
+  - Windows now show solid borders (indicating custom mode)
+- Edits one window by clicking it - time inputs are typeable
+- Accidentally creates overlapping window
+- System automatically merges overlapping windows (earliest start, latest end)
+- Clicks **Undo** to revert last change
+- Clicks **Redo** to bring it back
+- Satisfied with custom schedule for tomorrow
+
+#### 9. **Customizing Prompts**
 - Navigates to **Journal → Current Prompts** in sidebar
 - Sees the 4 default prompts with drag handles
 - Decides to customize:
@@ -82,7 +113,7 @@ Zien is a daily reflection app that helps users maintain clarity and focus throu
 - Keeps rating enabled (default)
 - Changes are saved automatically
 
-#### 8. **Second Reflection with Custom Prompts**
+#### 10. **Second Reflection with Custom Prompts**
 - Returns to Day View
 - Clicks **"Initiate Call"**
 - Sees the **updated prompts** in reflection session:
@@ -95,7 +126,7 @@ Zien is a daily reflection app that helps users maintain clarity and focus throu
 - Rates day as **+2** (great day!)
 - Completes session
 
-#### 9. **Browsing Past Entries**
+#### 11. **Browsing Past Entries**
 - Navigates to **Past Entries**
 - Sees 2 entry cards now, sorted newest first:
   - **Today** - Rating: +2
@@ -111,20 +142,33 @@ Zien is a daily reflection app that helps users maintain clarity and focus throu
 
 **Week Later**: Jordan has been using Zien daily.
 
-#### 10. **Disabling Rating**
+#### 12. **Managing Call Windows - Clear vs Reset**
+- Opens **Day View** for a custom day (previously edited)
+- Decides to remove all windows for that day
+- Clicks **Clear** button
+  - All windows disappear
+  - Day stays in custom mode (no recurring windows show)
+  - Can add new custom windows if needed later
+- Next day, decides to go back to weekly schedule
+- Clicks **Reset** button
+  - Day returns to recurring mode
+  - Shows recurring windows from weekly template again
+  - Dashed borders indicate recurring mode
+
+#### 13. **Disabling Rating**
 - Decides rating feels too quantitative
 - Goes to **Current Prompts**
 - Toggles the **Day Rating** off (eye icon changes to eye-off)
 - Preference saved to profile
 
-#### 11. **Reflection Without Rating**
+#### 14. **Reflection Without Rating**
 - Starts new reflection session
 - Answers all prompts as usual
 - **No rating step appears** (auto-completes after last prompt)
 - Session completes immediately
-- Entry saved without rating
+- Entry saved without rating (defaults to 0)
 
-#### 12. **Managing Prompts**
+#### 15. **Managing Prompts**
 - Reorders prompts via drag-and-drop
 - Temporarily deactivates a prompt without deleting
 - Inactive prompt shown with:
@@ -133,7 +177,7 @@ Zien is a daily reflection app that helps users maintain clarity and focus throu
   - Empty dashed circle (no number)
 - Can reactivate later if needed
 
-#### 13. **Reviewing Growth**
+#### 16. **Reviewing Growth**
 - Opens **Past Entries**
 - Scrolls through week of entries
 - Sees mix of entries with and without ratings
@@ -144,18 +188,46 @@ Zien is a daily reflection app that helps users maintain clarity and focus throu
 
 ## Key Features Demonstrated
 
+### ✅ **Recurring Week Scheduler**
+- Set up weekly availability template across all 7 days
+- Drag-to-create windows on any day column
+- Multi-day creation via Add modal with checkbox selection
+- Per-column clear buttons for individual days
+- Page-level undo/redo (10-action limit)
+- Perfect grid alignment with sticky headers
+- Time conversion between frontend (minutes) and backend (ISO strings)
+
+### ✅ **Day Mode System**
+- **Recurring Mode** (default): Shows windows from weekly schedule
+- **Custom Mode**: Shows day-specific one-off windows
+- Automatic conversion on first edit
+- Clear vs Reset distinction:
+  - Clear: Removes windows, stays in custom mode (empty)
+  - Reset: Returns to recurring mode, shows weekly schedule
+- Visual indicators: Dashed borders (recurring) vs solid borders (custom)
+
+### ✅ **Smart Window Management**
+- Automatic merging of overlapping windows
+- Undo/Redo with full state management
+- Typeable time inputs with validation
+- Inline delete icons on hover
+- Scrollable timeline (700px max-height)
+- 5-minute minimum window duration
+
 ### ✅ **Flexible Prompts**
 - Customize up to 5 prompts
 - Drag-and-drop reordering
-- Inline text editing
+- Inline text editing (Google Docs style)
 - Active/inactive toggle
-- Default prompts for new users
+- Default prompts for new users (4 prompts)
+- Visual distinction for inactive prompts
 
 ### ✅ **Optional Rating**
 - Toggle rating on/off in preferences
 - Preference persists across sessions
 - Sessions adapt automatically
 - Clear scale explanation (-2 to +2)
+- Entries support optional ratings (default to 0)
 
 ### ✅ **Immutable Records**
 - Past entries preserve original prompts
@@ -168,12 +240,14 @@ Zien is a daily reflection app that helps users maintain clarity and focus throu
 - Active prompts only in reflection sessions
 - Visual distinction for inactive prompts
 - Responsive and intuitive design
+- Consistent teal accent (#20808d) across all pages
 
 ### ✅ **Seamless Experience**
 - Fresh prompts loaded every session
 - No caching issues
 - Immediate reflection of changes
 - Smooth navigation and transitions
+- Optimized queries (entries with responses in single call)
 
 ---
 
