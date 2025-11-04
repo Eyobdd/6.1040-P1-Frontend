@@ -170,14 +170,16 @@ const getActiveIndex = (index: number) => {
 const toggleRating = async () => {
   if (!userId.value) return;
   includeRating.value = !includeRating.value;
-  await api.updateRatingPreference(userId.value, includeRating.value);
+  await api.updateRatingPreference(includeRating.value);
 };
 
 const loadPrompts = async () => {
   if (!userId.value) return;
-  const result = await api.getUserPrompts(userId.value);
-  if (Array.isArray(result)) {
-    prompts.value = result;
+  const result = await api.getUserPrompts();
+  // Backend returns { prompts: [...] }
+  const promptsArray = (result as any)?.prompts || result;
+  if (Array.isArray(promptsArray)) {
+    prompts.value = promptsArray;
   }
 };
 
@@ -196,7 +198,7 @@ const startEdit = async (prompt: Prompt) => {
 const saveEdit = async (prompt: Prompt) => {
   if (!userId.value) return;
   if (editText.value.trim() && editText.value !== prompt.promptText) {
-    const result = await api.updatePromptText(userId.value, prompt.position, editText.value.trim());
+    const result = await api.updatePromptText(prompt.position, editText.value.trim());
     if (!('error' in result)) {
       prompt.promptText = editText.value.trim();
     }
@@ -217,7 +219,7 @@ const toggleActive = async (prompt: Prompt) => {
   }
   
   if (!userId.value) return;
-  const result = await api.togglePromptActive(userId.value, prompt.position);
+  const result = await api.togglePromptActive(prompt.position);
   if (!('error' in result)) {
     prompt.isActive = !prompt.isActive;
   }
@@ -226,7 +228,7 @@ const toggleActive = async (prompt: Prompt) => {
 const deletePromptConfirm = async (prompt: Prompt) => {
   if (!userId.value) return;
   if (confirm(`Delete "${prompt.promptText}"?`)) {
-    const result = await api.deletePrompt(userId.value, prompt.position);
+    const result = await api.deletePrompt(prompt.position);
     if (!('error' in result)) {
       await loadPrompts();
     }
@@ -236,7 +238,7 @@ const deletePromptConfirm = async (prompt: Prompt) => {
 const addPrompt = async () => {
   if (!userId.value || !newPromptText.value.trim()) return;
   
-  const result = await api.addPrompt(userId.value, newPromptText.value.trim());
+  const result = await api.addPrompt(newPromptText.value.trim());
   if ('prompt' in result) {
     await loadPrompts();
     newPromptText.value = '';
@@ -277,7 +279,7 @@ const handleDrop = async (e: DragEvent, dropIndex: number) => {
   // Update backend
   if (!userId.value) return;
   const newOrder = newPrompts.map(p => p._id);
-  await api.reorderPrompts(userId.value, newOrder);
+  await api.reorderPrompts(newOrder);
   await loadPrompts();
 };
 
@@ -306,12 +308,12 @@ onMounted(async () => {
   
   // If no prompts exist, create default prompts
   if (prompts.value.length === 0) {
-    await api.createDefaultPrompts(userId.value);
+    await api.createDefaultPrompts();
     await loadPrompts();
   }
   
   // Load rating preference from profile
-  const profile = await api.getProfile(userId.value);
+  const profile = await api.getProfile();
   if (profile && 'includeRating' in profile) {
     includeRating.value = profile.includeRating;
   }

@@ -486,10 +486,13 @@ function mergeOverlappingWindows(day: DayOfWeek) {
 
 // Backend sync
 async function loadWindows() {
-  const result = await api.getUserRecurringWindows(props.userId);
+  const result = await api.getUserRecurringWindows();
   
-  if (Array.isArray(result)) {
-    windows.value = result.map((w: any) => ({
+  // Backend returns { windows: [...] }
+  const windowsArray = (result as any)?.windows || result;
+  
+  if (Array.isArray(windowsArray)) {
+    windows.value = windowsArray.map((w: any) => ({
       id: w._id,
       dayOfWeek: w.dayOfWeek,
       startTime: timeStringToMinutes(w.startTime),
@@ -500,17 +503,18 @@ async function loadWindows() {
 
 async function syncToBackend() {
   // Delete all existing recurring windows
-  const existing = await api.getUserRecurringWindows(props.userId);
+  const result = await api.getUserRecurringWindows();
+  const existing = (result as any)?.windows || result;
+  
   if (Array.isArray(existing)) {
     for (const window of existing) {
-      await api.deleteRecurringCallWindow(props.userId, window.dayOfWeek, new Date(window.startTime));
+      await api.deleteRecurringCallWindow(window.dayOfWeek, new Date(window.startTime));
     }
   }
   
   // Create all current windows
   for (const window of windows.value) {
     await api.createRecurringCallWindow(
-      props.userId,
       window.dayOfWeek,
       minutesToDate(window.startTime),
       minutesToDate(window.endTime)

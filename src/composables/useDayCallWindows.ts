@@ -103,15 +103,19 @@ export function useDayCallWindows(userId: Ref<string>, selectedDate: Ref<Date>) 
   // Window Operations
   const loadRecurringWindows = async () => {
     const result = await api.getUserRecurringWindows(userId.value);
-    if (Array.isArray(result)) {
-      recurringWindows.value = result;
+    // Backend returns { windows: [...] }
+    const windowsArray = (result as any)?.windows || result;
+    if (Array.isArray(windowsArray)) {
+      recurringWindows.value = windowsArray;
     }
   };
 
   const loadOneOffWindows = async () => {
     const result = await api.getUserOneOffWindows(userId.value);
-    if (Array.isArray(result)) {
-      oneOffWindows.value = result;
+    // Backend returns { windows: [...] }
+    const windowsArray = (result as any)?.windows || result;
+    if (Array.isArray(windowsArray)) {
+      oneOffWindows.value = windowsArray;
     }
   };
 
@@ -148,7 +152,6 @@ export function useDayCallWindows(userId: Ref<string>, selectedDate: Ref<Date>) 
       dateEnd.setHours(endTime.getUTCHours(), endTime.getUTCMinutes(), 0, 0);
 
       await api.createOneOffCallWindow(
-        userId.value,
         selectedDateString.value,
         dateStart,
         dateEnd
@@ -161,7 +164,9 @@ export function useDayCallWindows(userId: Ref<string>, selectedDate: Ref<Date>) 
   const syncOneOffWindows = async () => {
     // First, get current windows from backend to know what to delete
     const backendResult = await api.getUserOneOffWindows(userId.value);
-    const backendWindows = Array.isArray(backendResult) ? backendResult : [];
+    // Backend returns { windows: [...] }
+    const windowsArray = (backendResult as any)?.windows || backendResult;
+    const backendWindows = Array.isArray(windowsArray) ? windowsArray : [];
     
     // Delete all one-off windows for this date from backend
     const windowsToDelete = backendWindows.filter(
@@ -170,7 +175,6 @@ export function useDayCallWindows(userId: Ref<string>, selectedDate: Ref<Date>) 
 
     for (const window of windowsToDelete) {
       await api.deleteOneOffCallWindow(
-        userId.value,
         selectedDateString.value,
         new Date(window.startTime)
       );
@@ -183,7 +187,6 @@ export function useDayCallWindows(userId: Ref<string>, selectedDate: Ref<Date>) 
 
     for (const window of windowsToCreate) {
       await api.createOneOffCallWindow(
-        userId.value,
         selectedDateString.value,
         new Date(window.startTime),
         new Date(window.endTime)
@@ -195,7 +198,9 @@ export function useDayCallWindows(userId: Ref<string>, selectedDate: Ref<Date>) 
     const windows: DisplayWindow[] = [];
 
     // Check if we should use recurring or custom (one-off) windows
-    const useRecurring = await api.shouldUseRecurring(userId.value, selectedDateString.value);
+    const result = await api.shouldUseRecurring(selectedDateString.value);
+    // Backend returns { useRecurring: boolean }
+    const useRecurring = (result as any)?.useRecurring ?? result;
 
     if (useRecurring) {
       // Default mode: Show recurring windows
@@ -260,11 +265,12 @@ export function useDayCallWindows(userId: Ref<string>, selectedDate: Ref<Date>) 
 
   const createWindow = async (startTime: Date, endTime: Date, shouldMerge: boolean = false) => {
     // Check if we're in recurring mode - if so, switch to custom mode
-    const useRecurring = await api.shouldUseRecurring(userId.value, selectedDateString.value);
+    const result = await api.shouldUseRecurring(selectedDateString.value);
+    const useRecurring = (result as any)?.useRecurring ?? result;
     if (useRecurring) {
       // Convert recurring to one-off and switch to custom mode
       await ensureOneOffWindowsExist();
-      await api.setDayModeCustom(userId.value, selectedDateString.value);
+      await api.setDayModeCustom(selectedDateString.value);
       dayInitialized.value = true;
     }
 
@@ -276,27 +282,25 @@ export function useDayCallWindows(userId: Ref<string>, selectedDate: Ref<Date>) 
     // Save current state for undo BEFORE making changes
     pushUndo('create');
 
-    let result;
+    let createResult;
     if (shouldMerge) {
       // Merge overlapping windows using backend
-      result = await api.mergeOverlappingOneOffWindows(
-        userId.value,
+      createResult = await api.mergeOverlappingOneOffWindows(
         selectedDateString.value,
         startTime,
         endTime
       );
     } else {
       // No overlap, create normally
-      result = await api.createOneOffCallWindow(
-        userId.value,
+      createResult = await api.createOneOffCallWindow(
         selectedDateString.value,
         startTime,
         endTime
       );
     }
 
-    if ('error' in result) {
-      console.error('Failed to create window:', result.error);
+    if ('error' in createResult) {
+      console.error('Failed to create window:', createResult.error);
       undoStack.value.pop(); // Remove undo entry on failure
       return;
     }
@@ -317,7 +321,6 @@ export function useDayCallWindows(userId: Ref<string>, selectedDate: Ref<Date>) 
     pushUndo('delete');
 
     await api.deleteOneOffCallWindow(
-      userId.value,
       selectedDateString.value,
       window.startTime
     );
@@ -339,7 +342,6 @@ export function useDayCallWindows(userId: Ref<string>, selectedDate: Ref<Date>) 
 
     for (const window of windowsToDelete) {
       await api.deleteOneOffCallWindow(
-        userId.value,
         selectedDateString.value,
         new Date(window.startTime)
       );
@@ -351,7 +353,7 @@ export function useDayCallWindows(userId: Ref<string>, selectedDate: Ref<Date>) 
     );
 
     // Set day mode back to recurring (default)
-    await api.setDayModeRecurring(userId.value, selectedDateString.value);
+    await api.setDayModeRecurring(selectedDateString.value);
 
     // Mark as uninitialized so recurring windows show again
     dayInitialized.value = false;
@@ -366,12 +368,13 @@ export function useDayCallWindows(userId: Ref<string>, selectedDate: Ref<Date>) 
     pushUndo('clear');
 
     // First, ensure we're in custom mode (convert recurring if needed)
-    const useRecurring = await api.shouldUseRecurring(userId.value, selectedDateString.value);
+    const result = await api.shouldUseRecurring(selectedDateString.value);
+    const useRecurring = (result as any)?.useRecurring ?? result;
     if (useRecurring) {
       // Convert recurring to one-off first
       await ensureOneOffWindowsExist();
       // Set to custom mode
-      await api.setDayModeCustom(userId.value, selectedDateString.value);
+      await api.setDayModeCustom(selectedDateString.value);
     }
 
     // Now delete all one-off windows for this date from backend
@@ -381,7 +384,6 @@ export function useDayCallWindows(userId: Ref<string>, selectedDate: Ref<Date>) 
 
     for (const window of windowsToDelete) {
       await api.deleteOneOffCallWindow(
-        userId.value,
         selectedDateString.value,
         new Date(window.startTime)
       );

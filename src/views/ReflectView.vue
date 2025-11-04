@@ -129,7 +129,7 @@ async function loadPromptsAndStartSession() {
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
     const today = `${year}-${month}-${day}`;
-    const entryResult = await api.getEntryByDate(authResult.user, today);
+    const entryResult = await api.getEntryByDate(today);
     
     if (entryResult && '_id' in entryResult) {
       // Entry exists for today - redirect to day view
@@ -139,18 +139,21 @@ async function loadPromptsAndStartSession() {
     }
 
     // Load user's rating preference
-    const profile = await api.getProfile(authResult.user);
+    const profile = await api.getProfile();
     if (profile && 'includeRating' in profile) {
       includeRating.value = profile.includeRating;
     }
 
     // Get active prompts (only active ones from user's current settings)
-    const promptsResult = await api.getActivePrompts(authResult.user);
+    const promptsResult = await api.getActivePrompts();
     console.log('Active prompts result:', promptsResult);
     
-    if (Array.isArray(promptsResult) && promptsResult.length > 0) {
-      prompts.value = promptsResult;
-      responses.value = new Array(promptsResult.length).fill('');
+    // Backend returns { prompts: [...] }
+    const promptsArray = (promptsResult as any)?.prompts || promptsResult;
+    
+    if (Array.isArray(promptsArray) && promptsArray.length > 0) {
+      prompts.value = promptsArray;
+      responses.value = new Array(promptsArray.length).fill('');
       console.log('Loaded prompts:', prompts.value);
     } else {
       console.error('No active prompts found. Result:', promptsResult);
@@ -162,7 +165,6 @@ async function loadPromptsAndStartSession() {
     // Start reflection session
     const callSessionId = `call:${Date.now()}`;
     const sessionResult = await api.startSession(
-      authResult.user,
       callSessionId,
       prompts.value.map((p: any) => ({
         promptId: p._id,
@@ -250,7 +252,10 @@ async function completeReflection() {
 
     // Get session data
     const session = await api.getSession(sessionId.value!);
-    const sessionResponses = await api.getSessionResponses(sessionId.value!);
+    const sessionResponsesResult = await api.getSessionResponses(sessionId.value!);
+    
+    // Backend returns { responses: [...] }, extract the array
+    const sessionResponses = (sessionResponsesResult as any)?.responses || sessionResponsesResult;
 
     // Create journal entry
     await api.createFromSession(

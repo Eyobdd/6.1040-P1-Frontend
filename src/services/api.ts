@@ -93,55 +93,55 @@ class ApiService {
   }
 
   // Profile endpoints
-  async createProfile(user: string, displayName: string, phoneNumber: string, timezone: string) {
-    return this.post('Profile/createProfile', { user, displayName, phoneNumber, timezone });
+  async createProfile(displayName: string, phoneNumber: string, timezone: string) {
+    return this.post('Profile/createProfile', { token: this.token, displayName, phoneNumber, timezone });
   }
 
-  async getProfile(user: string) {
-    return this.post('Profile/_getProfile', { user });
+  async getProfile() {
+    return this.post('Profile/_getProfile', { token: this.token });
   }
 
-  async updateRatingPreference(user: string, includeRating: boolean) {
-    return this.post('Profile/updateRatingPreference', { user, includeRating });
+  async updateRatingPreference(includeRating: boolean) {
+    return this.post('Profile/updateRatingPreference', { token: this.token, includeRating });
   }
 
   // JournalPrompt endpoints
-  async createDefaultPrompts(user: string) {
-    return this.post('JournalPrompt/createDefaultPrompts', { user });
+  async createDefaultPrompts() {
+    return this.post('JournalPrompt/createDefaultPrompts', { token: this.token });
   }
 
-  async getUserPrompts(user: string) {
-    return this.post('JournalPrompt/_getUserPrompts', { user });
+  async getUserPrompts() {
+    return this.post('JournalPrompt/_getUserPrompts', { token: this.token });
   }
 
-  async getActivePrompts(user: string) {
-    return this.post('JournalPrompt/_getActivePrompts', { user });
+  async getActivePrompts() {
+    return this.post('JournalPrompt/_getActivePrompts', { token: this.token });
   }
 
-  async updatePromptText(user: string, position: number, newText: string) {
-    return this.post('JournalPrompt/updatePromptText', { user, position, newText });
+  async updatePromptText(position: number, newText: string) {
+    return this.post('JournalPrompt/updatePromptText', { token: this.token, position, newText });
   }
 
-  async reorderPrompts(user: string, newOrder: string[]) {
-    return this.post('JournalPrompt/reorderPrompts', { user, newOrder });
+  async reorderPrompts(newOrder: string[]) {
+    return this.post('JournalPrompt/reorderPrompts', { token: this.token, newOrder });
   }
 
-  async togglePromptActive(user: string, position: number) {
-    return this.post('JournalPrompt/togglePromptActive', { user, position });
+  async togglePromptActive(position: number) {
+    return this.post('JournalPrompt/togglePromptActive', { token: this.token, position });
   }
 
-  async deletePrompt(user: string, position: number) {
-    return this.post('JournalPrompt/deletePrompt', { user, position });
+  async deletePrompt(position: number) {
+    return this.post('JournalPrompt/deletePrompt', { token: this.token, position });
   }
 
-  async addPrompt(user: string, promptText: string) {
-    return this.post<{ prompt?: string; error?: string }>('JournalPrompt/addPrompt', { user, promptText });
+  async addPrompt(promptText: string) {
+    return this.post<{ prompt?: string; error?: string }>('JournalPrompt/addPrompt', { token: this.token, promptText });
   }
 
   // ReflectionSession endpoints
-  async startSession(user: string, callSession: string, prompts: Array<{ promptId: string; promptText: string }>) {
+  async startSession(callSession: string, prompts: Array<{ promptId: string; promptText: string }>) {
     return this.post<{ session?: string; error?: string }>('ReflectionSession/startSession', {
-      user,
+      token: this.token,
       callSession,
       prompts,
     });
@@ -149,6 +149,7 @@ class ApiService {
 
   async recordResponse(session: string, promptId: string, promptText: string, position: number, responseText: string) {
     return this.post('ReflectionSession/recordResponse', {
+      token: this.token,
       session,
       promptId,
       promptText,
@@ -162,15 +163,15 @@ class ApiService {
   }
 
   async completeSession(session: string, expectedPromptCount: number) {
-    return this.post('ReflectionSession/completeSession', { session, expectedPromptCount });
+    return this.post('ReflectionSession/completeSession', { token: this.token, session, expectedPromptCount });
   }
 
   async getSessionResponses(session: string) {
-    return this.post('ReflectionSession/_getSessionResponses', { session });
+    return this.post('ReflectionSession/_getSessionResponses', { token: this.token, session });
   }
 
   async getSession(session: string) {
-    return this.post('ReflectionSession/_getSession', { session });
+    return this.post('ReflectionSession/_getSession', { token: this.token, session });
   }
 
   async abandonSession(session: string) {
@@ -180,108 +181,109 @@ class ApiService {
   // JournalEntry endpoints
   async createFromSession(sessionData: any, sessionResponses: any[]) {
     return this.post<{ entry?: string; error?: string }>('JournalEntry/createFromSession', {
+      token: this.token,
       sessionData,
       sessionResponses,
     });
   }
 
-  async getEntriesByUser(user: string) {
-    return this.post('JournalEntry/_getEntriesByUser', { user });
+  async getEntriesByUser() {
+    return this.post('JournalEntry/_getEntriesByUser', { token: this.token });
   }
 
-  async getEntriesWithResponsesByUser(user: string) {
-    return this.post('JournalEntry/_getEntriesWithResponsesByUser', { user });
+  async getEntriesWithResponsesByUser() {
+    return this.post('JournalEntry/_getEntriesWithResponsesByUser', { token: this.token });
   }
 
-  async getEntryByDate(user: string, date: string) {
-    return this.post('JournalEntry/_getEntryByDate', { user, date });
+  async getEntryByDate(date: string) {
+    return this.post('JournalEntry/_getEntryByDate', { token: this.token, date });
   }
 
   async getEntryResponses(entry: string) {
-    return this.post('JournalEntry/_getEntryResponses', { entry });
+    return this.post('JournalEntry/_getEntryResponses', { token: this.token, entry });
   }
 
   // CallWindow endpoints
-  async createRecurringCallWindow(user: string, dayOfWeek: string, startTime: Date, endTime: Date) {
+  async createRecurringCallWindow(dayOfWeek: string, startTime: Date, endTime: Date) {
     return this.post<{ callWindow?: string; error?: string }>('CallWindow/createRecurringCallWindow', {
-      user,
+      token: this.token,
       dayOfWeek,
       startTime: startTime.toISOString(),
       endTime: endTime.toISOString(),
     });
   }
 
-  async createOneOffCallWindow(user: string, specificDate: string, startTime: Date, endTime: Date) {
+  async createOneOffCallWindow(specificDate: string, startTime: Date | string, endTime: Date | string) {
     return this.post<{ callWindow?: string; error?: string }>('CallWindow/createOneOffCallWindow', {
-      user,
+      token: this.token,
       specificDate,
-      startTime: startTime.toISOString(),
-      endTime: endTime.toISOString(),
+      startTime: typeof startTime === 'string' ? startTime : startTime.toISOString(),
+      endTime: typeof endTime === 'string' ? endTime : endTime.toISOString(),
     });
   }
 
-  async deleteRecurringCallWindow(user: string, dayOfWeek: string, startTime: Date) {
+  async deleteRecurringCallWindow(dayOfWeek: string, startTime: Date) {
     return this.post('CallWindow/deleteRecurringCallWindow', {
-      user,
+      token: this.token,
       dayOfWeek,
       startTime: startTime.toISOString(),
     });
   }
 
-  async deleteOneOffCallWindow(user: string, specificDate: string, startTime: Date) {
+  async deleteOneOffCallWindow(specificDate: string, startTime: Date | string) {
     return this.post('CallWindow/deleteOneOffCallWindow', {
-      user,
+      token: this.token,
       specificDate,
-      startTime: startTime.toISOString(),
+      startTime: typeof startTime === 'string' ? startTime : startTime.toISOString(),
     });
   }
 
-  async getUserCallWindows(user: string) {
-    return this.post('CallWindow/_getUserCallWindows', { user });
+  async getUserCallWindows() {
+    return this.post('CallWindow/_getUserCallWindows', { token: this.token });
   }
 
-  async getUserRecurringWindows(user: string) {
-    return this.post('CallWindow/_getUserRecurringWindows', { user });
+  async getUserRecurringWindows() {
+    return this.post('CallWindow/_getUserRecurringWindows', { token: this.token });
   }
 
-  async getUserOneOffWindows(user: string) {
-    return this.post('CallWindow/_getUserOneOffWindows', { user });
+  async getUserOneOffWindows() {
+    return this.post('CallWindow/_getUserOneOffWindows', { token: this.token });
   }
 
   async getRecurringWindowsByDay(dayOfWeek: string) {
-    return this.post('CallWindow/_getRecurringWindowsByDay', { dayOfWeek });
+    return this.post('CallWindow/_getRecurringWindowsByDay', { token: this.token, dayOfWeek });
   }
 
   async getOneOffWindowsByDate(specificDate: string) {
-    return this.post('CallWindow/_getOneOffWindowsByDate', { specificDate });
+    return this.post('CallWindow/_getOneOffWindowsByDate', { token: this.token, specificDate });
   }
 
-  async mergeOverlappingOneOffWindows(user: string, specificDate: string, startTime: Date, endTime: Date) {
+  async mergeOverlappingOneOffWindows(specificDate: string, startTime: Date | string, endTime: Date | string) {
     return this.post<{ callWindow?: string; error?: string }>('CallWindow/mergeOverlappingOneOffWindows', {
-      user,
+      token: this.token,
       specificDate,
-      startTime: startTime.toISOString(),
-      endTime: endTime.toISOString(),
+      startTime: typeof startTime === 'string' ? startTime : startTime.toISOString(),
+      endTime: typeof endTime === 'string' ? endTime : endTime.toISOString(),
     });
   }
 
-  async setDayModeCustom(user: string, date: string) {
+  async setDayModeCustom(date: string) {
     return this.post<{ dayMode?: string; error?: string }>('CallWindow/setDayModeCustom', {
-      user,
+      token: this.token,
       date,
     });
   }
 
-  async setDayModeRecurring(user: string, date: string) {
+  async setDayModeRecurring(date: string) {
     return this.post<{ dayMode?: string; error?: string }>('CallWindow/setDayModeRecurring', {
-      user,
+      token: this.token,
       date,
     });
   }
 
-  async shouldUseRecurring(user: string, date: string) {
+  async shouldUseRecurring(date: string) {
     return this.post<boolean>('CallWindow/shouldUseRecurring', {
-      user,
+      token: this.token,
       date,
     });
   }

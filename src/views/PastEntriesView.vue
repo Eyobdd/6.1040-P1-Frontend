@@ -142,13 +142,16 @@ const loadEntries = async () => {
     userId.value = authResult.user;
     console.log('Loading entries for user:', userId.value); // Debug log
     
-    const result = await api.getEntriesWithResponsesByUser(userId.value);
+    const result = await api.getEntriesWithResponsesByUser();
     console.log('API result:', result); // Debug log
-    console.log('API result type:', typeof result, 'isArray:', Array.isArray(result)); // Debug log
+    
+    // Backend returns { entries: [...] }
+    const entriesArray = (result as any)?.entries || result;
+    console.log('Entries array:', entriesArray, 'isArray:', Array.isArray(entriesArray)); // Debug log
     
     // The new endpoint returns entries with responses included
-    if (Array.isArray(result)) {
-      entries.value = result;
+    if (Array.isArray(entriesArray)) {
+      entries.value = entriesArray;
       console.log('Loaded entries:', entries.value.length); // Debug log
       if (entries.value.length > 0) {
         console.log('First entry:', entries.value[0]); // Debug log

@@ -150,16 +150,22 @@ async function loadEntryForDate() {
     const month = String(selectedDate.value.getMonth() + 1).padStart(2, '0');
     const day = String(selectedDate.value.getDate()).padStart(2, '0');
     const dateString = `${year}-${month}-${day}`;
-    const entryResult = await api.getEntryByDate(authResult.user, dateString);
+    const entryResult = await api.getEntryByDate(dateString);
     console.log('Entry result:', entryResult);
     console.log('Date string:', dateString);
 
-    if (entryResult && '_id' in entryResult) {
-      dayEntry.value = entryResult;
+    // Backend returns { entry: JournalEntryDoc | null }
+    const entry = (entryResult as any)?.entry || null;
+
+    if (entry && '_id' in entry) {
+      dayEntry.value = entry;
       // Load responses
-      const responsesResult = await api.getEntryResponses(entryResult._id);
-      if (Array.isArray(responsesResult)) {
-        responses.value = responsesResult;
+      const responsesResult = await api.getEntryResponses(entry._id);
+      
+      // Backend returns { responses: [...] }
+      const responsesArray = (responsesResult as any)?.responses || responsesResult;
+      if (Array.isArray(responsesArray)) {
+        responses.value = responsesArray;
       }
     } else {
       dayEntry.value = null;

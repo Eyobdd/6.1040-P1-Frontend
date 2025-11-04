@@ -165,16 +165,20 @@ async function handleSignup() {
   const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   console.log('Detected timezone:', userTimezone);
 
+  // Set token first so authenticated requests work
+  if (result.token) {
+    api.setToken(result.token);
+  }
+
   // Create profile with detected timezone
   await api.createProfile(
-    userId,
     'User',
     phoneNumber.value,
     userTimezone
   );
 
   // Create default prompts
-  await api.createDefaultPrompts(userId);
+  await api.createDefaultPrompts();
 
   // Set token and redirect
   if (result.token) {

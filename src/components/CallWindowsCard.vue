@@ -421,8 +421,9 @@ const handleMergeCancel = () => {
 // Check if journal entry exists for the selected date
 const checkJournalEntry = async () => {
   try {
-    const result = await api.getEntryByDate(props.userId, selectedDateString.value);
-    hasJournalEntry.value = !!result && !('error' in result);
+    const result = await api.getEntryByDate(selectedDateString.value);
+    // Backend returns { entry: JournalEntryDoc | null }
+    hasJournalEntry.value = !!(result as any)?.entry && !('error' in result);
   } catch (error) {
     hasJournalEntry.value = false;
   }
