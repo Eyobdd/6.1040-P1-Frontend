@@ -102,7 +102,7 @@ export function useDayCallWindows(userId: Ref<string>, selectedDate: Ref<Date>) 
 
   // Window Operations
   const loadRecurringWindows = async () => {
-    const result = await api.getUserRecurringWindows(userId.value);
+    const result = await api.getUserRecurringWindows();
     // Backend returns { windows: [...] }
     const windowsArray = (result as any)?.windows || result;
     if (Array.isArray(windowsArray)) {
@@ -111,7 +111,7 @@ export function useDayCallWindows(userId: Ref<string>, selectedDate: Ref<Date>) 
   };
 
   const loadOneOffWindows = async () => {
-    const result = await api.getUserOneOffWindows(userId.value);
+    const result = await api.getUserOneOffWindows();
     // Backend returns { windows: [...] }
     const windowsArray = (result as any)?.windows || result;
     if (Array.isArray(windowsArray)) {
@@ -163,7 +163,7 @@ export function useDayCallWindows(userId: Ref<string>, selectedDate: Ref<Date>) 
 
   const syncOneOffWindows = async () => {
     // First, get current windows from backend to know what to delete
-    const backendResult = await api.getUserOneOffWindows(userId.value);
+    const backendResult = await api.getUserOneOffWindows();
     // Backend returns { windows: [...] }
     const windowsArray = (backendResult as any)?.windows || backendResult;
     const backendWindows = Array.isArray(windowsArray) ? windowsArray : [];

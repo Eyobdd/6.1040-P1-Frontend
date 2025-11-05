@@ -13,45 +13,65 @@
     <div class="card-header">
       <h3 class="card-title">Call Windows</h3>
       <div class="card-actions">
-        <button 
-          class="action-btn add-btn" 
-          @click="handleAddWindow" 
-          title="Add window"
-        >
-          <v-icon size="16">mdi-plus</v-icon>
-        </button>
+        <v-tooltip text="Add call window" location="bottom">
+          <template v-slot:activator="{ props }">
+            <button 
+              class="action-btn add-btn" 
+              @click="handleAddWindow"
+              v-bind="props"
+            >
+              <v-icon size="16">mdi-plus</v-icon>
+            </button>
+          </template>
+        </v-tooltip>
         <div class="button-divider"></div>
-        <button 
-          class="action-btn" 
-          @click="handleUndo" 
-          :disabled="!canUndo"
-          title="Undo"
-        >
-          <v-icon size="16">mdi-undo-variant</v-icon>
-        </button>
-        <button 
-          class="action-btn" 
-          @click="handleRedo" 
-          :disabled="!canRedo"
-          title="Redo"
-        >
-          <v-icon size="16">mdi-redo-variant</v-icon>
-        </button>
+        <v-tooltip text="Undo last change" location="bottom">
+          <template v-slot:activator="{ props }">
+            <button 
+              class="action-btn" 
+              @click="handleUndo" 
+              :disabled="!canUndo"
+              v-bind="props"
+            >
+              <v-icon size="16">mdi-undo-variant</v-icon>
+            </button>
+          </template>
+        </v-tooltip>
+        <v-tooltip text="Redo last undone change" location="bottom">
+          <template v-slot:activator="{ props }">
+            <button 
+              class="action-btn" 
+              @click="handleRedo" 
+              :disabled="!canRedo"
+              v-bind="props"
+            >
+              <v-icon size="16">mdi-redo-variant</v-icon>
+            </button>
+          </template>
+        </v-tooltip>
         <div class="button-divider"></div>
-        <button 
-          class="action-btn" 
-          @click="handleReset" 
-          title="Reset"
-        >
-          <v-icon size="16">mdi-refresh</v-icon>
-        </button>
-        <button 
-          class="action-btn" 
-          @click="handleClear" 
-          title="Clear"
-        >
-          <v-icon size="16">mdi-delete-outline</v-icon>
-        </button>
+        <v-tooltip text="Reset to recurring windows" location="bottom">
+          <template v-slot:activator="{ props }">
+            <button 
+              class="action-btn" 
+              @click="handleReset"
+              v-bind="props"
+            >
+              <v-icon size="16">mdi-refresh</v-icon>
+            </button>
+          </template>
+        </v-tooltip>
+        <v-tooltip text="Clear all windows for this day" location="bottom">
+          <template v-slot:activator="{ props }">
+            <button 
+              class="action-btn" 
+              @click="handleClear"
+              v-bind="props"
+            >
+              <v-icon size="16">mdi-delete-outline</v-icon>
+            </button>
+          </template>
+        </v-tooltip>
       </div>
     </div>
 

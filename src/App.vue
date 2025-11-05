@@ -1,9 +1,23 @@
 <script setup lang="ts">
+import CustomAlert from '@/components/CustomAlert.vue';
+import { useAlert } from '@/composables/useAlert';
+
+const { alertState, confirm, cancel } = useAlert();
 </script>
 
 <template>
   <v-app>
     <router-view />
+    <CustomAlert
+      v-if="alertState.visible"
+      :title="alertState.title"
+      :message="alertState.message"
+      :confirmText="alertState.confirmText"
+      :cancelText="alertState.cancelText"
+      :showCancel="alertState.showCancel"
+      @confirm="confirm"
+      @cancel="cancel"
+    />
   </v-app>
 </template>
 

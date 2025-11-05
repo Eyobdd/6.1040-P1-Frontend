@@ -44,40 +44,54 @@
               <div
                 v-else
                 class="prompt-text"
-                @click="startEdit(prompt)"
+                :class="{ 'disabled': !prompt.isActive }"
+                @click="prompt.isActive ? startEdit(prompt) : null"
               >
                 {{ prompt.promptText }}
               </div>
             </div>
 
             <div class="prompt-actions">
-              <button
-                class="action-btn toggle-btn"
-                :class="{ inactive: !prompt.isActive }"
-                @click="toggleActive(prompt)"
-                :title="prompt.isActive ? 'Active' : 'Inactive'"
-              >
-                <v-icon size="18">{{ prompt.isActive ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
-              </button>
-              <button
-                class="action-btn delete-btn"
-                @click="deletePromptConfirm(prompt)"
-                title="Delete prompt"
-              >
-                <v-icon size="18">mdi-delete-outline</v-icon>
-              </button>
+              <v-tooltip :text="prompt.isActive ? 'Deactivate prompt' : 'Activate prompt'" location="bottom">
+                <template v-slot:activator="{ props }">
+                  <button
+                    class="action-btn toggle-btn"
+                    :class="{ inactive: !prompt.isActive }"
+                    @click="toggleActive(prompt)"
+                    v-bind="props"
+                  >
+                    <v-icon size="18">{{ prompt.isActive ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
+                  </button>
+                </template>
+              </v-tooltip>
+              <v-tooltip text="Delete prompt" location="bottom">
+                <template v-slot:activator="{ props }">
+                  <button
+                    class="action-btn delete-btn"
+                    @click="deletePromptConfirm(prompt)"
+                    v-bind="props"
+                  >
+                    <v-icon size="18">mdi-delete-outline</v-icon>
+                  </button>
+                </template>
+              </v-tooltip>
             </div>
           </div>
         </TransitionGroup>
 
-        <button
-          v-if="prompts.length < 5"
-          class="add-prompt-btn"
-          @click="showAddPrompt = true"
-        >
-          <v-icon size="20">mdi-plus</v-icon>
-          <span>Add Prompt</span>
-        </button>
+        <v-tooltip text="Add a new reflection prompt" location="bottom">
+          <template v-slot:activator="{ props }">
+            <button
+              v-if="prompts.length < 5"
+              class="add-prompt-btn"
+              @click="showAddPrompt = true"
+              v-bind="props"
+            >
+              <v-icon size="20">mdi-plus</v-icon>
+              <span>Add Prompt</span>
+            </button>
+          </template>
+        </v-tooltip>
 
         <div v-if="prompts.length >= 5" class="max-prompts-notice">
           Maximum of 5 prompts reached
@@ -96,14 +110,18 @@
             <div class="rating-description">This prompt asks users to rate their day at the end of the call</div>
           </div>
           <div class="rating-toggle">
-            <button
-              class="action-btn toggle-btn"
-              :class="{ inactive: !includeRating }"
-              @click="toggleRating"
-              :title="includeRating ? 'Active' : 'Inactive'"
-            >
-              <v-icon size="18">{{ includeRating ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
-            </button>
+            <v-tooltip :text="includeRating ? 'Disable day rating' : 'Enable day rating'" location="bottom">
+              <template v-slot:activator="{ props }">
+                <button
+                  class="action-btn toggle-btn"
+                  :class="{ inactive: !includeRating }"
+                  @click="toggleRating"
+                  v-bind="props"
+                >
+                  <v-icon size="18">{{ includeRating ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
+                </button>
+              </template>
+            </v-tooltip>
           </div>
         </div>
       </div>
@@ -169,8 +187,21 @@ const getActiveIndex = (index: number) => {
 
 const toggleRating = async () => {
   if (!userId.value) return;
+  const previousValue = includeRating.value;
   includeRating.value = !includeRating.value;
-  await api.updateRatingPreference(includeRating.value);
+  
+  try {
+    const result = await api.updateRatingPreference(includeRating.value);
+    if ('error' in result) {
+      // Revert on error
+      includeRating.value = previousValue;
+      console.error('Failed to update rating preference:', result.error);
+    }
+  } catch (error) {
+    // Revert on error
+    includeRating.value = previousValue;
+    console.error('Failed to update rating preference:', error);
+  }
 };
 
 const loadPrompts = async () => {
@@ -200,7 +231,7 @@ const saveEdit = async (prompt: Prompt) => {
   if (editText.value.trim() && editText.value !== prompt.promptText) {
     const result = await api.updatePromptText(prompt.position, editText.value.trim());
     if (!('error' in result)) {
-      prompt.promptText = editText.value.trim();
+      await loadPrompts(); // Reload from backend to ensure consistency
     }
   }
   editingId.value = null;
@@ -221,7 +252,7 @@ const toggleActive = async (prompt: Prompt) => {
   if (!userId.value) return;
   const result = await api.togglePromptActive(prompt.position);
   if (!('error' in result)) {
-    prompt.isActive = !prompt.isActive;
+    await loadPrompts(); // Reload from backend to ensure consistency
   }
 };
 
@@ -468,8 +499,13 @@ onMounted(async () => {
   text-align: left;
 }
 
-.prompt-text:hover {
+.prompt-text:hover:not(.disabled) {
   background: #f8f8f8;
+}
+
+.prompt-text.disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .prompt-input {

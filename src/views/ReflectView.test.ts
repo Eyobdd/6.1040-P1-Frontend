@@ -10,6 +10,14 @@ vi.mock('vue-router', () => ({
   useRouter: () => ({
     push: mockPush,
   }),
+  onBeforeRouteLeave: vi.fn(),
+}));
+
+// Mock useAlert composable
+vi.mock('@/composables/useAlert', () => ({
+  useAlert: () => ({
+    showAlert: vi.fn().mockResolvedValue(true),
+  }),
 }));
 
 // Mock the API
@@ -27,6 +35,9 @@ vi.mock('@/services/api', () => ({
     getSession: vi.fn(),
     getSessionResponses: vi.fn(),
     createFromSession: vi.fn(),
+    getActiveSession: vi.fn(),
+    getSessionStatus: vi.fn(),
+    abandonSession: vi.fn(),
   },
 }));
 
@@ -49,6 +60,7 @@ describe('ReflectView - Prompt Loading', () => {
     vi.mocked(api.getToken).mockReturnValue(mockToken);
     vi.mocked(api.authenticate).mockResolvedValue({ user: mockUser });
     vi.mocked(api.getEntryByDate).mockResolvedValue({ error: 'Not found' });
+    vi.mocked(api.getActiveSession).mockResolvedValue({ error: 'No active session' });
     vi.mocked(api.getProfile).mockResolvedValue({ includeRating: true });
     vi.mocked(api.getActivePrompts).mockResolvedValue(mockActivePrompts);
     vi.mocked(api.startSession).mockResolvedValue({ session: 'session-123' });
@@ -58,8 +70,8 @@ describe('ReflectView - Prompt Loading', () => {
     await nextTick();
     await new Promise(resolve => setTimeout(resolve, 100)); // Wait for async operations
 
-    // Verify: getActivePrompts was called with correct user
-    expect(api.getActivePrompts).toHaveBeenCalledWith(mockUser);
+    // Verify: getActivePrompts was called (uses token internally)
+    expect(api.getActivePrompts).toHaveBeenCalled();
     expect(api.getActivePrompts).toHaveBeenCalledTimes(1);
   });
 
@@ -76,6 +88,7 @@ describe('ReflectView - Prompt Loading', () => {
     vi.mocked(api.getToken).mockReturnValue(mockToken);
     vi.mocked(api.authenticate).mockResolvedValue({ user: mockUser });
     vi.mocked(api.getEntryByDate).mockResolvedValue({ error: 'Not found' });
+    vi.mocked(api.getActiveSession).mockResolvedValue({ error: 'No active session' });
     vi.mocked(api.getProfile).mockResolvedValue({ includeRating: true });
     vi.mocked(api.getActivePrompts).mockResolvedValue(mockActivePrompts);
     vi.mocked(api.startSession).mockResolvedValue({ session: 'session-123' });
@@ -103,6 +116,7 @@ describe('ReflectView - Prompt Loading', () => {
     vi.mocked(api.getToken).mockReturnValue(mockToken);
     vi.mocked(api.authenticate).mockResolvedValue({ user: mockUser });
     vi.mocked(api.getEntryByDate).mockResolvedValue({ error: 'Not found' });
+    vi.mocked(api.getActiveSession).mockResolvedValue({ error: 'No active session' });
     vi.mocked(api.getProfile).mockResolvedValue({ includeRating: true });
     vi.mocked(api.getActivePrompts).mockResolvedValue(mockActivePrompts);
     vi.mocked(api.startSession).mockResolvedValue({ session: 'session-123' });
@@ -114,8 +128,7 @@ describe('ReflectView - Prompt Loading', () => {
 
     // Verify: Updated prompt text is used in session start
     expect(api.startSession).toHaveBeenCalledWith(
-      mockUser,
-      expect.any(String),
+      expect.any(String), // callSessionId
       expect.arrayContaining([
         expect.objectContaining({ promptText: 'UPDATED: What made you smile today?' }),
         expect.objectContaining({ promptText: 'UPDATED: What did you accomplish?' }),
@@ -134,6 +147,7 @@ describe('ReflectView - Prompt Loading', () => {
     vi.mocked(api.getToken).mockReturnValue(mockToken);
     vi.mocked(api.authenticate).mockResolvedValue({ user: mockUser });
     vi.mocked(api.getEntryByDate).mockResolvedValue({ error: 'Not found' });
+    vi.mocked(api.getActiveSession).mockResolvedValue({ error: 'No active session' });
     vi.mocked(api.getProfile).mockResolvedValue({ includeRating: false });
     vi.mocked(api.getActivePrompts).mockResolvedValue(mockActivePrompts);
     vi.mocked(api.startSession).mockResolvedValue({ session: 'session-123' });
@@ -143,8 +157,8 @@ describe('ReflectView - Prompt Loading', () => {
     await nextTick();
     await new Promise(resolve => setTimeout(resolve, 100));
 
-    // Verify: Profile was loaded
-    expect(api.getProfile).toHaveBeenCalledWith(mockUser);
+    // Verify: Profile was loaded (uses token internally)
+    expect(api.getProfile).toHaveBeenCalled();
     expect(api.getProfile).toHaveBeenCalledTimes(1);
   });
 
@@ -156,6 +170,7 @@ describe('ReflectView - Prompt Loading', () => {
     vi.mocked(api.getToken).mockReturnValue(mockToken);
     vi.mocked(api.authenticate).mockResolvedValue({ user: mockUser });
     vi.mocked(api.getEntryByDate).mockResolvedValue({ error: 'Not found' });
+    vi.mocked(api.getActiveSession).mockResolvedValue({ error: 'No active session' });
     vi.mocked(api.getProfile).mockResolvedValue({ includeRating: true });
     vi.mocked(api.getActivePrompts).mockResolvedValue([]);
     
@@ -167,9 +182,9 @@ describe('ReflectView - Prompt Loading', () => {
     await nextTick();
     await new Promise(resolve => setTimeout(resolve, 100));
 
-    // Verify: Shows error and redirects
-    expect(alertSpy).toHaveBeenCalledWith('No prompts found. Please contact support.');
-    expect(mockPush).toHaveBeenCalledWith('/');
+    // Verify: Shows error and redirects to prompts page
+    // Note: The actual message comes from useAlert composable
+    expect(mockPush).toHaveBeenCalledWith('/journal/prompts');
     
     alertSpy.mockRestore();
   });
@@ -187,6 +202,7 @@ describe('ReflectView - Prompt Loading', () => {
     vi.mocked(api.getToken).mockReturnValue(mockToken);
     vi.mocked(api.authenticate).mockResolvedValue({ user: mockUser });
     vi.mocked(api.getEntryByDate).mockResolvedValue({ error: 'Not found' });
+    vi.mocked(api.getActiveSession).mockResolvedValue({ error: 'No active session' });
     vi.mocked(api.getProfile).mockResolvedValue({ includeRating: true });
     vi.mocked(api.getActivePrompts).mockResolvedValue(mockActivePrompts);
     vi.mocked(api.startSession).mockResolvedValue({ session: 'session-123' });
@@ -198,7 +214,6 @@ describe('ReflectView - Prompt Loading', () => {
 
     // Verify: startSession called with prompt snapshots
     expect(api.startSession).toHaveBeenCalledWith(
-      mockUser,
       expect.any(String), // callSessionId
       [
         { promptId: 'prompt1', promptText: 'Prompt text 1' },
@@ -221,6 +236,7 @@ describe('ReflectView - Prompt Loading', () => {
     vi.mocked(api.getToken).mockReturnValue(mockToken);
     vi.mocked(api.authenticate).mockResolvedValue({ user: mockUser });
     vi.mocked(api.getEntryByDate).mockResolvedValue({ error: 'Not found' });
+    vi.mocked(api.getActiveSession).mockResolvedValue({ error: 'No active session' });
     vi.mocked(api.getProfile).mockResolvedValue({ includeRating: true });
     vi.mocked(api.getActivePrompts).mockResolvedValue(mockActivePrompts);
     vi.mocked(api.startSession).mockResolvedValue({ session: 'session-123' });
@@ -233,8 +249,7 @@ describe('ReflectView - Prompt Loading', () => {
     // Verify: Prompts passed to startSession in the order received from backend
     // (Backend should return them sorted by position)
     expect(api.startSession).toHaveBeenCalledWith(
-      mockUser,
-      expect.any(String),
+      expect.any(String), // callSessionId
       [
         { promptId: 'prompt3', promptText: 'Third' },
         { promptId: 'prompt1', promptText: 'First' },
@@ -254,6 +269,7 @@ describe('ReflectView - Prompt Loading', () => {
     vi.mocked(api.getToken).mockReturnValue(mockToken);
     vi.mocked(api.authenticate).mockResolvedValue({ user: mockUser });
     vi.mocked(api.getEntryByDate).mockResolvedValue({ error: 'Not found' });
+    vi.mocked(api.getActiveSession).mockResolvedValue({ error: 'No active session' });
     vi.mocked(api.getProfile).mockResolvedValue({ includeRating: true });
     vi.mocked(api.getActivePrompts).mockResolvedValue(mockActivePrompts1);
     vi.mocked(api.startSession).mockResolvedValue({ session: 'session-123' });
@@ -278,6 +294,7 @@ describe('ReflectView - Prompt Loading', () => {
     vi.mocked(api.getToken).mockReturnValue(mockToken);
     vi.mocked(api.authenticate).mockResolvedValue({ user: mockUser });
     vi.mocked(api.getEntryByDate).mockResolvedValue({ error: 'Not found' });
+    vi.mocked(api.getActiveSession).mockResolvedValue({ error: 'No active session' });
     vi.mocked(api.getProfile).mockResolvedValue({ includeRating: true });
     vi.mocked(api.getActivePrompts).mockResolvedValue(mockActivePrompts2);
     vi.mocked(api.startSession).mockResolvedValue({ session: 'session-456' });
@@ -290,8 +307,7 @@ describe('ReflectView - Prompt Loading', () => {
     // Verify: getActivePrompts called again with fresh data
     expect(api.getActivePrompts).toHaveBeenCalledTimes(1);
     expect(api.startSession).toHaveBeenCalledWith(
-      mockUser,
-      expect.any(String),
+      expect.any(String), // callSessionId
       expect.arrayContaining([
         expect.objectContaining({ promptText: 'NEW prompt text' }),
         expect.objectContaining({ promptText: 'Another new prompt' }),
@@ -317,6 +333,7 @@ describe('ReflectView - Integration with Backend', () => {
     vi.mocked(api.getToken).mockReturnValue(mockToken);
     vi.mocked(api.authenticate).mockResolvedValue({ user: mockUser });
     vi.mocked(api.getEntryByDate).mockResolvedValue({ error: 'Not found' });
+    vi.mocked(api.getActiveSession).mockResolvedValue({ error: 'No active session' });
     vi.mocked(api.getProfile).mockResolvedValue({ includeRating: true });
     vi.mocked(api.getActivePrompts).mockResolvedValue(mockActivePrompts);
     vi.mocked(api.startSession).mockResolvedValue({ session: 'session-123' });

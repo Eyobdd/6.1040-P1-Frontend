@@ -11,20 +11,35 @@
         
         <div v-if="!codeSent" class="form-step">
           <label for="phone">Phone Number</label>
-          <input
-            id="phone"
-            v-model="phoneNumber"
-            type="tel"
-            placeholder="+1234567890"
-            class="input-field"
-            @keyup.enter="requestCode"
-          />
+          <div class="phone-input-group">
+            <v-select
+              v-model="countryCode"
+              :items="countryCodes"
+              item-title="label"
+              item-value="value"
+              variant="outlined"
+              density="comfortable"
+              hide-details
+              class="country-code-select"
+            ></v-select>
+            <v-text-field
+              id="phone"
+              v-model="phoneNumberLocal"
+              type="tel"
+              placeholder="2025551234"
+              variant="outlined"
+              density="comfortable"
+              hide-details
+              class="phone-input"
+              @keyup.enter="requestCode"
+            ></v-text-field>
+          </div>
           
           <button @click="requestCode" class="primary-button" :disabled="loading">
             {{ loading ? 'Sending...' : 'Continue' }}
           </button>
           
-          <p class="hint">Enter your phone number in E.164 format (e.g., +12025551234)</p>
+          <p class="hint">Enter your phone number (country code will be added automatically)</p>
         </div>
 
         <div v-else class="form-step">
@@ -69,13 +84,33 @@ import { api } from '@/services/api';
 
 const router = useRouter();
 
-const phoneNumber = ref('');
+const countryCode = ref('+1'); // Default to US
+const phoneNumberLocal = ref('');
 const verificationCode = ref('');
 const codeSent = ref(false);
 const loading = ref(false);
 const error = ref('');
 const statusMessage = ref('');
 const isNewUser = ref(false);
+
+// Country code options
+const countryCodes = [
+  { label: '🇺🇸 +1', value: '+1' },
+  { label: '🇬🇧 +44', value: '+44' },
+  { label: '🇮🇳 +91', value: '+91' },
+  { label: '🇨🇳 +86', value: '+86' },
+  { label: '🇯🇵 +81', value: '+81' },
+  { label: '🇩🇪 +49', value: '+49' },
+  { label: '🇫🇷 +33', value: '+33' },
+  { label: '🇦🇺 +61', value: '+61' },
+  { label: '🇧🇷 +55', value: '+55' },
+  { label: '🇲🇽 +52', value: '+52' },
+];
+
+// Computed full phone number
+const phoneNumber = computed(() => {
+  return countryCode.value + phoneNumberLocal.value;
+});
 
 const formTitle = computed(() => {
   if (!codeSent.value) return 'Welcome';
@@ -201,8 +236,9 @@ async function handleLogin() {
 }
 
 function resetForm() {
-  codeSent.value = false;
+  phoneNumberLocal.value = '';
   verificationCode.value = '';
+  codeSent.value = false;
   error.value = '';
   statusMessage.value = '';
 }
@@ -258,9 +294,26 @@ function resetForm() {
 label {
   display: block;
   margin-bottom: 8px;
-  color: #333;
-  font-weight: 500;
+  color: #555;
   font-size: 14px;
+  font-weight: 500;
+}
+
+.phone-input-group {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.country-code-select {
+  width: auto;
+  min-width: 100px;
+  max-width: 120px;
+  flex-shrink: 0;
+}
+
+.phone-input {
+  flex: 1;
 }
 
 .input-field {

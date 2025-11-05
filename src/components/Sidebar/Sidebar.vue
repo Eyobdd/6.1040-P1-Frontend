@@ -94,15 +94,15 @@
               <div class="button-wrapper">
                 <div 
                   class="panel-item call-item" 
-                  :class="{ disabled: isCallCompleted }"
+                  :class="{ disabled: isCallInProgress || isCallCompleted }"
                   @click="handleInitiateCall"
                   role="button"
                   tabindex="0"
                   @keyup.enter="handleInitiateCall"
-                  aria-label="Initiate call for today"
+                  :aria-label="isCallCompleted ? 'Call completed for today' : isCallInProgress ? 'Call in progress' : 'Initiate call for today'"
                 >
-                  <v-icon size="18" class="item-icon">mdi-phone-outline</v-icon>
-                  <span>Initiate Call</span>
+                  <v-icon size="18" class="item-icon">{{ isCallCompleted ? 'mdi-phone-check' : isCallInProgress ? 'mdi-phone' : 'mdi-phone-outline' }}</v-icon>
+                  <span>{{ isCallCompleted ? 'Call Completed' : isCallInProgress ? 'Call In Progress' : 'Initiate Call' }}</span>
                 </div>
               </div>
             </div>
@@ -174,6 +174,8 @@
 import { ref, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api } from '@/services/api';
+import { useCallStatus } from '@/composables/useCallStatus';
+import { useAlert } from '@/composables/useAlert';
 
 const route = useRoute();
 const router = useRouter();
@@ -189,8 +191,9 @@ const activeItem = computed(() => {
 const hoveredItem = ref<string | null>(null);
 let hideTimeout: ReturnType<typeof setTimeout> | null = null;
 
-// TODO: Replace with actual call status check from API
-const isCallCompleted = ref(false);
+// Call status tracking
+const { isCallInProgress, isCallCompleted } = useCallStatus();
+const { showAlert } = useAlert();
 
 const handleItemEnter = (item: string) => {
   // Cancel any pending hide timeout
@@ -228,11 +231,53 @@ const handleGoToDayView = () => {
   router.push('/');
 };
 
-const handleInitiateCall = () => {
+const handleInitiateCall = async () => {
   if (isCallCompleted.value) return;
-  // TODO: Implement call initiation logic
-  console.log('Initiating call...');
-  // Keep panel open so user can see the action
+  
+  // Check if call is already in progress
+  if (isCallInProgress.value) {
+    await showAlert({ message: 'Unable to start a new call. There is currently a reflection session in progress.' });
+    return;
+  }
+  
+  try {
+    // Get phone number from authenticated user
+    const phoneNumber = localStorage.getItem('phoneNumber');
+    if (!phoneNumber) {
+      await showAlert({ message: 'Unable to retrieve your phone number. Please log in again.' });
+      return;
+    }
+    
+    // Create reflection session
+    const callSession = `call:${Date.now()}`;
+    const prompts = [
+      { promptId: 'prompt1', promptText: 'What are you grateful for today?' },
+      { promptId: 'prompt2', promptText: 'What is one thing you learned today?' }
+    ];
+    
+    const sessionResult = await api.startSession(callSession, prompts, 'PHONE');
+    if ('error' in sessionResult) {
+      await showAlert({ message: 'Unable to start your reflection session. Please try again.' });
+      return;
+    }
+    
+    // Schedule call for right now
+    const scheduledFor = new Date();
+    const callResult = await api.scheduleCall(callSession, phoneNumber, scheduledFor);
+    
+    if ('error' in callResult) {
+      await showAlert({ message: 'Unable to schedule your call. Please try again.' });
+      return;
+    }
+    
+    await showAlert({ message: 'Call scheduled! Your phone will ring shortly.' });
+    
+    // Navigate to day view to see status
+    router.push('/');
+  } catch (error) {
+    console.error('Failed to initiate call:', error);
+    await showAlert({ message: 'Unable to start your call. Please try again.' });
+  }
 };
 
 const handleLogout = async () => {

@@ -23,22 +23,46 @@
 
         <!-- No Entry State -->
         <div v-else-if="!dayEntry" class="no-entry-state">
-          <div class="empty-card">
-            <v-icon size="64" color="#ccc">mdi-book-open-outline</v-icon>
-            <h2 v-if="canStartReflection">No reflection yet for today</h2>
+          <div class="empty-card" :class="{ 'call-in-progress': isCallInProgress && isToday }">
+            <v-icon v-if="isCallInProgress && isToday" size="64" color="#20808d">mdi-phone-in-talk</v-icon>
+            <v-icon v-else-if="isPastDay" size="64" color="#999">mdi-calendar-remove</v-icon>
+            <v-icon v-else-if="isFutureDay" size="64" color="#ccc">mdi-calendar-clock</v-icon>
+            <v-icon v-else size="64" color="#ccc">mdi-book-open-outline</v-icon>
+            <h2 v-if="isCallInProgress && isToday">Call In Progress</h2>
+            <h2 v-else-if="isPastDay">No reflection recorded today</h2>
+            <h2 v-else-if="isFutureDay">Future date</h2>
+            <h2 v-else-if="canStartReflection">No reflection yet for today</h2>
             <h2 v-else>No reflection for this day</h2>
-            <p v-if="canStartReflection">Take a few minutes to reflect on your day</p>
+            <p v-if="isCallInProgress && isToday" class="call-message">Your reflection call is currently in progress. Please complete the call to see your responses here.</p>
+            <p v-else-if="isPastDay" class="disabled-message">You missed recording a reflection for this day</p>
+            <p v-else-if="isFutureDay" class="disabled-message">Reflections can only be recorded for today or past days</p>
+            <p v-else-if="canStartReflection">Take a few minutes to reflect on your day</p>
             <p v-else class="disabled-message">Reflections can only be recorded for today</p>
-            <v-btn 
-              v-if="canStartReflection"
-              @click="startReflection" 
-              color="#20808d" 
-              size="large" 
-              class="mt-4"
-              aria-label="Start reflection for today"
-            >
-              Start Reflection
-            </v-btn>
+            <div v-if="canStartReflection && !isCallInProgress" class="reflection-actions">
+              <v-btn 
+                @click="startReflection" 
+                color="#20808d" 
+                size="large" 
+                class="mt-4"
+                :disabled="isCallInProgress"
+                aria-label="Start reflection for today"
+              >
+                <v-icon left>mdi-pencil</v-icon>
+                Type Reflection
+              </v-btn>
+              <v-btn 
+                @click="initiatePhoneCall" 
+                color="#20808d" 
+                size="large" 
+                class="mt-4 ml-3"
+                :disabled="isCallInProgress"
+                :loading="checkingCallStatus"
+                aria-label="Initiate phone reflection"
+              >
+                <v-icon left>mdi-phone</v-icon>
+                Initiate Call
+              </v-btn>
+            </div>
           </div>
         </div>
 
@@ -86,6 +110,8 @@ import JournalResponseCard from '@/components/JournalResponseCard.vue';
 import DayScoreWidget from '@/components/DayScoreWidget.vue';
 import ResponseModal from '@/components/ResponseModal.vue';
 import CallWindowsCard from '@/components/CallWindowsCard.vue';
+import { useCallStatus } from '@/composables/useCallStatus';
+import { useAlert } from '@/composables/useAlert';
 
 const router = useRouter();
 const loading = ref(true);
@@ -96,6 +122,11 @@ const currentUser = ref<string | null>(null);
 const showModal = ref(false);
 const selectedResponse = ref<any>(null);
 const selectedResponseIndex = ref(0);
+const checkingCallStatus = ref(false);
+
+// Call status tracking
+const { isCallInProgress } = useCallStatus();
+const { showAlert } = useAlert();
 
 const formattedDate = computed(() => {
   return selectedDate.value.toLocaleDateString('en-US', {
@@ -112,6 +143,22 @@ const isToday = computed(() => {
   const selected = new Date(selectedDate.value);
   selected.setHours(0, 0, 0, 0);
   return selected.getTime() === today.getTime();
+});
+
+const isPastDay = computed(() => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const selected = new Date(selectedDate.value);
+  selected.setHours(0, 0, 0, 0);
+  return selected.getTime() < today.getTime();
+});
+
+const isFutureDay = computed(() => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const selected = new Date(selectedDate.value);
+  selected.setHours(0, 0, 0, 0);
+  return selected.getTime() > today.getTime();
 });
 
 const canStartReflection = computed(() => {
@@ -185,6 +232,55 @@ watch(selectedDate, () => {
 
 function startReflection() {
   router.push('/reflect');
+}
+
+async function initiatePhoneCall() {
+  if (!currentUser.value) return;
+  
+  // Check if call is already in progress
+  if (isCallInProgress.value) {
+    await showAlert({ message: 'Unable to start a new call. There is currently a reflection session in progress.' });
+    return;
+  }
+  
+  checkingCallStatus.value = true;
+  try {
+    // Get phone number from authenticated user
+    const phoneNumber = localStorage.getItem('phoneNumber');
+    if (!phoneNumber) {
+      await showAlert({ message: 'Unable to retrieve your phone number. Please log in again.' });
+      return;
+    }
+    
+    // Create reflection session
+    const callSession = `call:${Date.now()}`;
+    const prompts = [
+      { promptId: 'prompt1', promptText: 'What are you grateful for today?' },
+      { promptId: 'prompt2', promptText: 'What is one thing you learned today?' }
+    ];
+    
+    const sessionResult = await api.startSession(callSession, prompts, 'PHONE');
+    if ('error' in sessionResult) {
+      await showAlert({ message: 'Unable to start your reflection session. Please try again.' });
+      return;
+    }
+    
+    // Schedule call for right now
+    const scheduledFor = new Date();
+    const callResult = await api.scheduleCall(callSession, phoneNumber, scheduledFor);
+    
+    if ('error' in callResult) {
+      await showAlert({ message: 'Unable to schedule your call. Please try again.' });
+      return;
+    }
+    
+    await showAlert({ message: 'Call scheduled! Your phone will ring shortly.' });
+  } catch (error) {
+    console.error('Failed to initiate call:', error);
+    await showAlert({ message: 'Unable to start your call. Please try again.' });
+  } finally {
+    checkingCallStatus.value = false;
+  }
 }
 
 onMounted(() => {
@@ -275,9 +371,30 @@ onMounted(() => {
   font-size: 16px;
 }
 
+.reflection-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
 .disabled-message {
   color: #999 !important;
   font-style: italic;
+}
+
+.call-message {
+  color: #20808d !important;
+  font-weight: 500;
+}
+
+.empty-card.call-in-progress {
+  border-color: #20808d;
+  background: rgba(32, 128, 141, 0.02);
+}
+
+.empty-card.call-in-progress h2 {
+  color: #20808d;
 }
 
 /* Journal Response Cards Grid */

@@ -2,16 +2,28 @@
   <div class="recurring-week-scheduler">
     <!-- Controls bar -->
     <div class="controls-bar">
-      <button class="control-btn" @click="handleUndo" :disabled="!canUndo" title="Undo">
-        <v-icon size="18">mdi-undo-variant</v-icon>
-      </button>
-      <button class="control-btn" @click="handleRedo" :disabled="!canRedo" title="Redo">
-        <v-icon size="18">mdi-redo-variant</v-icon>
-      </button>
-      <button class="add-btn" @click="showAddModal = true">
-        <v-icon size="18">mdi-plus</v-icon>
-        Add Window
-      </button>
+      <v-tooltip text="Undo last change" location="bottom">
+        <template v-slot:activator="{ props }">
+          <button class="control-btn" @click="handleUndo" :disabled="!canUndo" v-bind="props">
+            <v-icon size="18">mdi-undo-variant</v-icon>
+          </button>
+        </template>
+      </v-tooltip>
+      <v-tooltip text="Redo last undone change" location="bottom">
+        <template v-slot:activator="{ props }">
+          <button class="control-btn" @click="handleRedo" :disabled="!canRedo" v-bind="props">
+            <v-icon size="18">mdi-redo-variant</v-icon>
+          </button>
+        </template>
+      </v-tooltip>
+      <v-tooltip text="Add recurring call window" location="bottom">
+        <template v-slot:activator="{ props }">
+          <button class="add-btn" @click="showAddModal = true" v-bind="props">
+            <v-icon size="18">mdi-plus</v-icon>
+            Add Window
+          </button>
+        </template>
+      </v-tooltip>
     </div>
 
     <!-- Week grid -->

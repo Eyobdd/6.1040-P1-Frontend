@@ -139,11 +139,12 @@ class ApiService {
   }
 
   // ReflectionSession endpoints
-  async startSession(callSession: string, prompts: Array<{ promptId: string; promptText: string }>) {
+  async startSession(callSession: string, prompts: Array<{ promptId: string; promptText: string }>, method: 'PHONE' | 'TEXT' = 'TEXT') {
     return this.post<{ session?: string; error?: string }>('ReflectionSession/startSession', {
       token: this.token,
       callSession,
       prompts,
+      method,
     });
   }
 
@@ -175,7 +176,38 @@ class ApiService {
   }
 
   async abandonSession(session: string) {
-    return this.post('ReflectionSession/abandonSession', { session });
+    return this.post('ReflectionSession/abandonSession', { token: this.token, session });
+  }
+
+  async getActiveSession() {
+    return this.post('ReflectionSession/_getActiveSession', { token: this.token });
+  }
+
+  async getSessionStatus(session: string) {
+    return this.post('ReflectionSession/getSessionStatus', { token: this.token, session });
+  }
+
+  // CallScheduler endpoints
+  async scheduleCall(callSession: string, phoneNumber: string, scheduledFor: Date, maxRetries: number = 3) {
+    return this.post<{ scheduledCall?: string; error?: string }>('CallScheduler/scheduleCall', {
+      token: this.token,
+      callSession,
+      phoneNumber,
+      scheduledFor: scheduledFor.toISOString(),
+      maxRetries,
+    });
+  }
+
+  async getActiveCallsForUser() {
+    return this.post('CallScheduler/_getActiveCallsForUser', { token: this.token });
+  }
+
+  async getScheduledCall(callSession: string) {
+    return this.post('CallScheduler/_getScheduledCall', { token: this.token, callSession });
+  }
+
+  async cancelCall(callSession: string) {
+    return this.post('CallScheduler/cancelCall', { token: this.token, callSession });
   }
 
   // JournalEntry endpoints

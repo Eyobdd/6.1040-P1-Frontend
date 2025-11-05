@@ -1,5 +1,16 @@
 <template>
   <div class="reflect-container">
+    <v-tooltip text="Abandon this reflection session" location="bottom">
+      <template v-slot:activator="{ props }">
+        <button 
+          @click="abandonReflection" 
+          class="abandon-button"
+          v-bind="props"
+        >
+          Abandon Reflection
+        </button>
+      </template>
+    </v-tooltip>
     <div class="reflect-card">
       <div class="progress-bar">
         <div class="progress-fill" :style="{ width: `${progress}%` }"></div>
@@ -65,10 +76,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, onBeforeRouteLeave } from 'vue-router';
 import { api } from '@/services/api';
+import { useAlert } from '@/composables/useAlert';
 
 const router = useRouter();
+const { showAlert } = useAlert();
 
 const prompts = ref<any[]>([]);
 const responses = ref<string[]>([]);
@@ -138,6 +151,10 @@ async function loadPromptsAndStartSession() {
       return;
     }
 
+    // Note: Session recovery disabled due to Engine timeout issues with _getActiveSession query
+    // If there's an existing IN_PROGRESS session, the backend will return an error with the session ID
+    // and we'll handle it in the error handler below
+
     // Load user's rating preference
     const profile = await api.getProfile();
     if (profile && 'includeRating' in profile) {
@@ -157,7 +174,7 @@ async function loadPromptsAndStartSession() {
       console.log('Loaded prompts:', prompts.value);
     } else {
       console.error('No active prompts found. Result:', promptsResult);
-      alert('No active prompts found. Please activate at least one prompt in the Current Prompts page.');
+      await showAlert({ message: 'Please set up your reflection prompts before starting a session.' });
       router.push('/journal/prompts');
       return;
     }
@@ -173,17 +190,45 @@ async function loadPromptsAndStartSession() {
     );
 
     if ('error' in sessionResult) {
-      // If error is about existing in-progress session, we could handle it here
-      // For now, show error and redirect
       console.error('Failed to start session:', sessionResult.error);
-      alert('Failed to start reflection session: ' + sessionResult.error);
+      
+      // Check if error is about existing IN_PROGRESS session
+      const errorMsg = sessionResult.error || '';
+      const sessionIdMatch = errorMsg.match(/IN_PROGRESS session: ([a-f0-9-]+)/);
+      
+      if (sessionIdMatch) {
+        // Found existing session ID in error message
+        const existingSessionId = sessionIdMatch[1];
+        console.log('[StartSession] Found existing session in error:', existingSessionId);
+        
+        const abandon = await showAlert({
+          message: 'You have an incomplete reflection from before. Would you like to abandon it and start fresh?',
+          showCancel: true,
+          confirmText: 'Start Fresh',
+          cancelText: 'Cancel',
+        });
+        
+        if (abandon) {
+          console.log('[StartSession] Abandoning existing session:', existingSessionId);
+          await api.abandonSession(existingSessionId);
+          // Retry starting the session
+          await loadPromptsAndStartSession();
+          return;
+        } else {
+          router.push('/');
+          return;
+        }
+      }
+      
+      // Other error - show generic message
+      await showAlert({ message: 'Unable to start your reflection session. Please try again.' });
       router.push('/');
       return;
     }
 
     if (!sessionResult.session) {
       console.error('Session result missing session ID:', sessionResult);
-      alert('Failed to start reflection session - no session ID returned');
+      await showAlert({ message: 'Unable to start your reflection session. Please try again.' });
       router.push('/');
       return;
     }
@@ -193,7 +238,7 @@ async function loadPromptsAndStartSession() {
     console.log('Session started successfully:', sessionId.value);
   } catch (e) {
     console.error('Failed to start session:', e);
-    alert('Failed to start reflection session');
+    await showAlert({ message: 'Unable to start your reflection session. Please try again.' });
     router.push('/');
   }
 }
@@ -248,7 +293,7 @@ async function completeReflection() {
     }
 
     // Complete session
-    await api.completeSession(sessionId.value!, prompts.value.length);
+    await api.completeSession(sessionId.value!);
 
     // Get session data
     const session = await api.getSession(sessionId.value!);
@@ -271,7 +316,7 @@ async function completeReflection() {
     completed.value = true;
   } catch (e) {
     console.error('Failed to complete reflection:', e);
-    alert('Failed to save reflection');
+    await showAlert({ message: 'Unable to save your reflection. Please try again.' });
   }
 }
 
@@ -279,16 +324,67 @@ function goToDashboard() {
   router.push('/');
 }
 
+async function abandonReflection() {
+  const confirmed = await showAlert({
+    message: 'Are you sure you want to abandon this reflection? Your progress will be lost.',
+    showCancel: true,
+    confirmText: 'Abandon',
+    cancelText: 'Continue',
+  });
+  
+  if (confirmed) {
+    await cleanupIncompleteSession();
+    router.push('/');
+  }
+}
+
+async function resumeSession(session: any) {
+  sessionId.value = session._id;
+  prompts.value = session.prompts;
+  
+  // Load existing responses
+  const responsesResult = await api.getSessionResponses(session._id);
+  const existingResponses = (responsesResult as any)?.responses || [];
+  
+  // Reconstruct state
+  responses.value = new Array(prompts.value.length).fill('');
+  existingResponses.forEach((r: any) => {
+    responses.value[r.position - 1] = r.responseText;
+  });
+  
+  // Load user's rating preference
+  const profile = await api.getProfile();
+  if (profile && 'includeRating' in profile) {
+    includeRating.value = profile.includeRating;
+  }
+  
+  // Resume at first unanswered prompt or rating step
+  currentStep.value = existingResponses.length;
+  
+  // If we're at the rating step and rating was already set, load it
+  if (currentStep.value >= prompts.value.length && session.rating !== undefined) {
+    selectedRating.value = session.rating;
+  }
+  
+  loading.value = false;
+  console.log('Resumed session successfully:', sessionId.value);
+}
+
 async function cleanupIncompleteSession() {
-  // If there's an active session that hasn't been completed, abandon it
+  // Simplified: Backend handles idempotency, no need for cleanupInProgress flag
+  console.log('[Cleanup] Starting cleanup - sessionId:', sessionId.value, 'completed:', completed.value);
+  
   if (sessionId.value && !completed.value) {
     try {
-      console.log('Abandoning incomplete session:', sessionId.value);
-      await api.abandonSession(sessionId.value);
+      console.log('[Cleanup] Calling abandonSession API for session:', sessionId.value);
+      const result = await api.abandonSession(sessionId.value);
+      console.log('[Cleanup] AbandonSession result:', result);
     } catch (e) {
-      console.error('Failed to abandon session:', e);
-      // Don't block navigation on cleanup failure
+      console.error('[Cleanup] Failed to abandon session:', e);
+      // Safe to ignore - backend will handle via webhook if this was a phone call
     }
+  } else {
+    console.log('[Cleanup] Skipping abandon - no session or already completed');
   }
 }
 
@@ -296,19 +392,55 @@ onMounted(() => {
   loadPromptsAndStartSession();
 });
 
-onBeforeUnmount(() => {
-  cleanupIncompleteSession();
+// Cleanup when navigating away from this route
+onBeforeRouteLeave(async (to, from) => {
+  await cleanupIncompleteSession();
+  return true;
 });
 </script>
 
 <style scoped>
 .reflect-container {
+  min-height: 100vh;
+  background: #f5f5f5;
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
-  background: #f5f5f5;
   padding: 20px;
+  position: relative;
+}
+
+.abandon-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  padding: 8px 20px;
+  background: transparent;
+  color: #666;
+  border: 1px solid #d0d0d0;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  z-index: 10;
+  white-space: nowrap;
+  outline: none;
+}
+
+.abandon-button:focus {
+  outline: none;
+}
+
+.abandon-button:focus-visible {
+  outline: 2px solid #e53e3e;
+  outline-offset: 2px;
+}
+
+.abandon-button:hover {
+  background: #fef2f2;
+  border-color: #e53e3e;
+  color: #e53e3e;
 }
 
 .reflect-card {
