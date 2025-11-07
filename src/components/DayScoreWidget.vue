@@ -1,10 +1,12 @@
 <template>
   <div class="day-score-widget" :style="{ background: widgetBackground }">
     <h3 class="widget-title" :style="{ color: titleColor }">Day Score</h3>
-    <div v-if="hasScore" class="score-content">
-      <div class="score-number" :style="{ color: textColor }">{{ score >= 0 ? '+' : '' }}{{ score }}</div>
-      <div class="score-label" :style="{ color: textColor }">{{ scoreLabel }}</div>
-    </div>
+    <template v-if="hasScore">
+      <div class="score-content">
+        <div class="score-number" :style="{ color: textColor }">{{ score! >= 0 ? '+' : '' }}{{ score }}</div>
+        <div class="score-label" :style="{ color: textColor }">{{ scoreLabel }}</div>
+      </div>
+    </template>
     <div v-else class="score-content empty-content">
       <v-icon size="48" :color="emptyIconColor">mdi-minus</v-icon>
       <div class="empty-label">Not yet rated</div>

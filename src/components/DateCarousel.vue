@@ -133,7 +133,7 @@ const visibleDates = computed(() => {
     
     dates.push({
       date: new Date(date),
-      dateString: date.toISOString().split('T')[0],
+      dateString: date.toISOString()?.split('T')[0] ?? '',
       dayAbbrev: getDayAbbrev(date),
       day: date.getDate(),
       month: date.getMonth(),
@@ -146,19 +146,19 @@ const visibleDates = computed(() => {
 
 const startMonth = computed(() => {
   if (visibleDates.value.length === 0) return '';
-  const firstDate = visibleDates.value[0].date;
-  return firstDate.toLocaleDateString('en-US', { month: 'short' });
+  const firstDate = visibleDates.value[0]?.date;
+  return firstDate ? firstDate.toLocaleDateString('en-US', { month: 'short' }) : '';
 });
 
 const endMonth = computed(() => {
   if (visibleDates.value.length === 0) return '';
-  const lastDate = visibleDates.value[visibleDates.value.length - 1].date;
-  return lastDate.toLocaleDateString('en-US', { month: 'short' });
+  const lastDate = visibleDates.value[visibleDates.value.length - 1]?.date;
+  return lastDate ? lastDate.toLocaleDateString('en-US', { month: 'short' }) : '';
 });
 
 function getDayAbbrev(date: Date): string {
   const days = ['Su', 'M', 'Tu', 'W', 'Th', 'F', 'Sa'];
-  return days[date.getDay()];
+  return date ? days[date.getDay()] ?? '' : '';
 }
 
 function isSelected(dateInfo: DateInfo): boolean {

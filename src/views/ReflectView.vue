@@ -143,7 +143,7 @@ async function loadPromptsAndStartSession() {
     const today = `${year}-${month}-${day}`;
     const entryResult = await api.getEntryByDate(today);
     
-    if (entryResult && '_id' in entryResult) {
+    if (entryResult && typeof entryResult === 'object' && '_id' in entryResult) {
       // Entry exists for today - redirect to day view
       router.push('/');
       return;
@@ -204,7 +204,9 @@ async function loadPromptsAndStartSession() {
         });
         
         if (abandon) {
-          await api.abandonSession(existingSessionId);
+          if (existingSessionId) {
+            await api.abandonSession(existingSessionId);
+          }
           // Retry starting the session
           await loadPromptsAndStartSession();
           return;
@@ -296,7 +298,7 @@ async function completeReflection() {
     }
 
     // Complete session
-    await api.completeSession(sessionId.value!);
+    await api.completeSession(sessionId.value!, new Date());
 
     // Get session data
     const session = await api.getSession(sessionId.value!);
@@ -356,8 +358,8 @@ async function resumeSession(session: any) {
   
   // Load user's rating preference
   const profile = await api.getProfile();
-  if (profile && 'includeRating' in profile) {
-    includeRating.value = profile.includeRating;
+  if (profile && typeof profile === 'object' && 'includeRating' in profile) {
+    includeRating.value = !!(profile as { includeRating: boolean }).includeRating;
   }
   
   // Resume at first unanswered prompt or rating step

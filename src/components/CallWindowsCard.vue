@@ -170,7 +170,7 @@
     <!-- Edit modal -->
     <CallWindowEditModal
       v-if="editingWindow"
-      :window="editingWindow"
+      :window="{ ...editingWindow, type: editingWindow.type || 'ONEOFF' }"
       @save="handleSaveEdit"
       @cancel="handleCancelEdit"
       @delete="handleDeleteFromModal"
@@ -443,7 +443,11 @@ const checkJournalEntry = async () => {
   try {
     const result = await api.getEntryByDate(selectedDateString.value);
     // Backend returns { entry: JournalEntryDoc | null }
-    hasJournalEntry.value = !!(result as any)?.entry && !('error' in result);
+    if (result && typeof result === 'object' && 'entry' in result) {
+      hasJournalEntry.value = !!(result as { entry: unknown }).entry && !('error' in result);
+    } else {
+      hasJournalEntry.value = false;
+    }
   } catch (error) {
     hasJournalEntry.value = false;
   }

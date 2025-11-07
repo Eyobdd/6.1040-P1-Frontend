@@ -171,8 +171,8 @@ async function requestCode() {
     // Request verification code
     const result = await api.requestVerificationCode(phoneNumber.value);
     
-    if ('error' in result) {
-      error.value = result.error;
+    if (result && typeof result === 'object' && 'error' in result) {
+      error.value = String(result.error);
     } else {
       codeSent.value = true;
       console.log('✅ Verification code sent! Check the backend console for the code.');

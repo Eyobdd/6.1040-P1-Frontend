@@ -311,11 +311,15 @@ async function handleSaveEdit(data: { startTime: number; endTime: number }) {
   pushUndo();
   const index = windows.value.findIndex(w => w.id === windowToEdit.id);
   if (index !== -1) {
-    windows.value[index] = {
-      ...windows.value[index],
-      startTime: data.startTime,
-      endTime: data.endTime,
-    };
+    const oldWindow = windows.value[index];
+    if (oldWindow) {
+      windows.value[index] = {
+        id: oldWindow.id,
+        dayOfWeek: oldWindow.dayOfWeek,
+        startTime: data.startTime,
+        endTime: data.endTime,
+      };
+    }
     
     // Automatically merge overlapping windows for this day
     mergeOverlappingWindows(day);

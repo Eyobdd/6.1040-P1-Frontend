@@ -25,7 +25,7 @@ export const useAuthStore = defineStore('auth', () => {
     const result = await api.login(phoneNumber, code);
     
     if ('error' in result) {
-      throw new Error(result.error);
+      throw new Error(String(result.error));
     }
 
     if (result.token) {
@@ -46,7 +46,7 @@ export const useAuthStore = defineStore('auth', () => {
     const result = await api.register(phoneNumber, code);
     
     if ('error' in result) {
-      throw new Error(result.error);
+      throw new Error(String(result.error));
     }
 
     // After registration, login

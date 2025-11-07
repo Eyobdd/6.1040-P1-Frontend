@@ -112,7 +112,7 @@
     <!-- Edit Modal -->
     <CallWindowEditModal
       v-if="editingWindow"
-      :window="editingWindow"
+      :window="{ ...editingWindow, type: editingWindow.type || 'ONEOFF' }"
       :selectedDate="editingDate"
       @save="handleSaveEdit"
       @cancel="handleCancelEdit"

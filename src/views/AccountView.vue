@@ -213,8 +213,8 @@ async function saveEdit() {
 
     const result = await api.updateProfile(updates);
 
-    if ('error' in result) {
-      showAlertMessage(result.error, 'error');
+    if (result && typeof result === 'object' && 'error' in result) {
+      showAlertMessage(String(result.error), 'error');
     } else {
       // Update local profile
       (profile.value as any)[currentEditField.value] = editValue.value;

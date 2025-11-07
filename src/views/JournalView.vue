@@ -200,7 +200,7 @@ const toggleRatingPrompt = async (ratingPrompt: Prompt) => {
   
   try {
     const result = await api.togglePromptActive(ratingPrompt.position, true); // true = isRatingPrompt
-    if (!('error' in result)) {
+    if (!(result && typeof result === 'object' && 'error' in result)) {
       await loadPrompts(); // Reload to get updated state
     }
   } catch (error) {
@@ -242,7 +242,7 @@ const saveEdit = async (prompt: Prompt) => {
   if (!userId.value) return;
   if (editText.value.trim() && editText.value !== prompt.promptText) {
     const result = await api.updatePromptText(prompt.position, editText.value.trim());
-    if (!('error' in result)) {
+    if (!(result && typeof result === 'object' && 'error' in result)) {
       await loadPrompts(); // Reload from backend to ensure consistency
     }
   }
@@ -263,7 +263,7 @@ const toggleActive = async (prompt: Prompt) => {
   
   if (!userId.value) return;
   const result = await api.togglePromptActive(prompt.position);
-  if (!('error' in result)) {
+  if (!(result && typeof result === 'object' && 'error' in result)) {
     await loadPrompts(); // Reload from backend to ensure consistency
   }
 };
@@ -272,7 +272,7 @@ const deletePromptConfirm = async (prompt: Prompt) => {
   if (!userId.value) return;
   if (confirm(`Delete "${prompt.promptText}"?`)) {
     const result = await api.deletePrompt(prompt.position);
-    if (!('error' in result)) {
+    if (!(result && typeof result === 'object' && 'error' in result)) {
       await loadPrompts();
     }
   }

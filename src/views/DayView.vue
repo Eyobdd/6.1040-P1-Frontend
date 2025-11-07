@@ -131,7 +131,7 @@ onMounted(() => {
   startPolling(2000, async () => {
     // Call completed - refresh the entry
     console.log('[DayView] Call completed, refreshing entry');
-    await loadDayEntry();
+    await loadEntryForDate();
   });
 });
 
