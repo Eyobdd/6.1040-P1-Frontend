@@ -298,7 +298,7 @@ async function completeReflection() {
     }
 
     // Complete session
-    await api.completeSession(sessionId.value!, new Date());
+    await api.completeSession(sessionId.value!, prompts.value.length);
 
     // Get session data
     const session = await api.getSession(sessionId.value!);
