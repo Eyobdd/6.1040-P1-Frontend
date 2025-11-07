@@ -94,6 +94,7 @@ const completed = ref(false);
 const loading = ref(true);
 const existingEntry = ref<any>(null);
 const showExistingEntry = ref(false);
+const includeRating = ref(false);
 
 const totalSteps = computed(() => prompts.value.length);
 const progress = computed(() => ((currentStep.value + 1) / totalSteps.value) * 100);

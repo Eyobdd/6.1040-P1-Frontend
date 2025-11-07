@@ -23,26 +23,29 @@
 
         <!-- No Entry State -->
         <div v-else-if="!dayEntry" class="no-entry-state">
-          <div class="empty-card" :class="{ 'call-in-progress': isCallInProgress && isToday }">
-            <v-icon v-if="isCallInProgress && isToday" size="64" color="#20808d">mdi-phone-in-talk</v-icon>
+          <div class="empty-card" :class="{ 'call-in-queue': isCallInQueue && isToday, 'call-in-progress': isCallInProgress && isToday }">
+            <v-icon v-if="isCallInQueue && isToday" size="64" color="#20808d">mdi-clock-outline</v-icon>
+            <v-icon v-else-if="isCallInProgress && isToday" size="64" color="#20808d">mdi-phone-in-talk</v-icon>
             <v-icon v-else-if="isPastDay" size="64" color="#999">mdi-calendar-remove</v-icon>
             <v-icon v-else-if="isFutureDay" size="64" color="#ccc">mdi-calendar-clock</v-icon>
             <v-icon v-else size="64" color="#ccc">mdi-book-open-outline</v-icon>
-            <h2 v-if="isCallInProgress && isToday">Call In Progress</h2>
+            <h2 v-if="isCallInQueue && isToday">Call in Queue</h2>
+            <h2 v-else-if="isCallInProgress && isToday">Call In Progress</h2>
             <h2 v-else-if="isPastDay">No reflection recorded today</h2>
             <h2 v-else-if="isFutureDay">Future date</h2>
             <h2 v-else-if="canStartReflection">No reflection yet for today</h2>
             <h2 v-else>No reflection for this day</h2>
-            <p v-if="isCallInProgress && isToday" class="call-message">Your reflection call is currently in progress. Please complete the call to see your responses here.</p>
+            <p v-if="isCallInQueue && isToday" class="call-message">Your call is being prepared. You'll receive a call shortly.</p>
+            <p v-else-if="isCallInProgress && isToday" class="call-message">Your reflection call is currently in progress. Please complete the call to see your responses here.</p>
             <p v-else-if="isPastDay" class="disabled-message">You missed recording a reflection for this day</p>
             <p v-else-if="isFutureDay" class="disabled-message">Reflections can only be recorded for today or past days</p>
             <p v-else-if="canStartReflection">Take a few minutes to reflect on your day</p>
             <p v-else class="disabled-message">Reflections can only be recorded for today</p>
-            <div v-if="canStartReflection && !isCallInProgress" class="reflection-actions">
+            <div v-if="canStartReflection && !isCallInProgress && !isCallInQueue" class="reflection-actions">
               <button 
                 @click="startReflection" 
                 class="action-button"
-                :disabled="isCallInProgress"
+                :disabled="isCallInProgress || isCallInQueue"
                 aria-label="Start reflection for today"
               >
                 <v-icon size="18">mdi-pencil</v-icon>
@@ -51,7 +54,7 @@
               <button 
                 @click="initiatePhoneCall" 
                 class="action-button"
-                :disabled="isCallInProgress || checkingCallStatus"
+                :disabled="isCallInProgress || isCallInQueue || checkingCallStatus"
                 aria-label="Initiate phone reflection"
               >
                 <v-icon size="18">mdi-phone</v-icon>
@@ -119,9 +122,18 @@ const selectedResponse = ref<any>(null);
 const selectedResponseIndex = ref(0);
 const checkingCallStatus = ref(false);
 
-// Call status tracking
-const { isCallInProgress } = useCallStatus();
+// Call status tracking with auto-refresh on completion
+const { isCallInQueue, isCallInProgress, checkCallStatus, startPolling } = useCallStatus();
 const { showAlert } = useAlert();
+
+// Set up polling with callback to refresh entry when call completes
+onMounted(() => {
+  startPolling(2000, async () => {
+    // Call completed - refresh the entry
+    console.log('[DayView] Call completed, refreshing entry');
+    await loadDayEntry();
+  });
+});
 
 const formattedDate = computed(() => {
   return selectedDate.value.toLocaleDateString('en-US', {
@@ -275,6 +287,9 @@ async function initiatePhoneCall() {
     }
     
     await showAlert({ message: 'Call scheduled! Your phone will ring shortly.' });
+    
+    // Immediately check call status to show "Call in Queue" state
+    await checkCallStatus();
   } catch (error) {
     await showAlert({ message: 'Unable to start your call. Please try again.' });
   } finally {
@@ -428,6 +443,15 @@ onMounted(() => {
 .call-message {
   color: #20808d !important;
   font-weight: 500;
+}
+
+.empty-card.call-in-queue {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.02);
+}
+
+.empty-card.call-in-queue h2 {
+  color: #f59e0b;
 }
 
 .empty-card.call-in-progress {

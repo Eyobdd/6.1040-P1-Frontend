@@ -161,17 +161,32 @@ const loadEntries = async () => {
 };
 
 const formatDate = (dateString: string) => {
-  const date = new Date(dateString);
+  // Parse the date string - handle both ISO strings and date-only strings
+  let date: Date;
+  if (dateString.includes('T')) {
+    // ISO datetime string - parse and convert to local date
+    date = new Date(dateString);
+  } else {
+    // Date-only string (YYYY-MM-DD) - parse as local date
+    const [year, month, day] = dateString.split('-').map(Number);
+    date = new Date(year, month - 1, day);
+  }
+  
+  // Normalize to local midnight for comparison
+  const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  
   const today = new Date();
-  const yesterday = new Date(today);
+  const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  
+  const yesterday = new Date(todayOnly);
   yesterday.setDate(yesterday.getDate() - 1);
   
-  if (date.toDateString() === today.toDateString()) {
+  if (dateOnly.getTime() === todayOnly.getTime()) {
     return 'Today';
-  } else if (date.toDateString() === yesterday.toDateString()) {
+  } else if (dateOnly.getTime() === yesterday.getTime()) {
     return 'Yesterday';
   } else {
-    return date.toLocaleDateString('en-US', { 
+    return dateOnly.toLocaleDateString('en-US', { 
       weekday: 'long', 
       year: 'numeric', 
       month: 'long', 

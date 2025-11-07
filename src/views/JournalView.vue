@@ -181,6 +181,7 @@ const newPromptText = ref('');
 const editInput = ref<HTMLInputElement | null>(null);
 const newPromptInput = ref<HTMLInputElement | null>(null);
 const userId = ref<string | null>(null);
+const includeRating = ref(false);
 
 const getActiveIndex = (index: number) => {
   // Count only active prompts up to this index
