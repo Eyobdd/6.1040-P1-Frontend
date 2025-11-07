@@ -42,7 +42,7 @@
           <p class="hint">Enter your phone number (country code will be added automatically)</p>
         </div>
 
-        <div v-else class="form-step">
+        <div v-else-if="!showProfileForm" class="form-step">
           <label for="code">Verification Code</label>
           <input
             id="code"
@@ -63,6 +63,34 @@
           </button>
           
           <p class="hint">Check the backend console for the verification code (SMS mocked for demo)</p>
+        </div>
+
+        <div v-else class="form-step">
+          <label for="name">First Name <span class="required">*</span></label>
+          <input
+            id="name"
+            v-model="displayName"
+            type="text"
+            placeholder="John"
+            class="input-field"
+            required
+            @keyup.enter="completeSignup"
+          />
+          
+          <label for="pronunciation">Name Pronunciation (Optional)</label>
+          <input
+            id="pronunciation"
+            v-model="namePronunciation"
+            type="text"
+            placeholder="JON DOH"
+            class="input-field"
+            @keyup.enter="completeSignup"
+          />
+          <p class="hint">How should we pronounce your name during calls? (e.g., "JON DOH" for "John Doe")</p>
+          
+          <button @click="completeSignup" class="primary-button" :disabled="loading || !displayName.trim()">
+            {{ loading ? 'Creating Account...' : 'Complete Setup' }}
+          </button>
         </div>
 
         <div v-if="error" class="error-message">
@@ -92,6 +120,9 @@ const loading = ref(false);
 const error = ref('');
 const statusMessage = ref('');
 const isNewUser = ref(false);
+const showProfileForm = ref(false);
+const displayName = ref('');
+const namePronunciation = ref('');
 
 // Country code options
 const countryCodes = [
@@ -160,14 +191,44 @@ async function verify() {
 
   try {
     if (isNewUser.value) {
-      // Signup flow
-      await handleSignup();
+      // For new users, verify code then show profile form
+      await verifyCodeForSignup();
     } else {
       // Login flow
       await handleLogin();
     }
   } catch (e: any) {
     error.value = e.message || 'Authentication failed';
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function verifyCodeForSignup() {
+  // Just verify the code is valid, don't create account yet
+  const verifyResult = await api.post<{ valid?: boolean; error?: string }>('UserAuthentication/verifyCode', {
+    phoneNumber: phoneNumber.value,
+    code: verificationCode.value,
+  });
+
+  if ('error' in verifyResult || !verifyResult.valid) {
+    error.value = verifyResult.error || 'Invalid verification code';
+    return;
+  }
+
+  // Code is valid, show profile form
+  showProfileForm.value = true;
+}
+
+async function completeSignup() {
+  error.value = '';
+  statusMessage.value = '';
+  loading.value = true;
+
+  try {
+    await handleSignup();
+  } catch (e: any) {
+    error.value = e.message || 'Failed to create account';
   } finally {
     loading.value = false;
   }
@@ -205,11 +266,12 @@ async function handleSignup() {
     api.setToken(result.token);
   }
 
-  // Create profile with detected timezone
+  // Create profile with detected timezone and user info
   await api.createProfile(
-    'User',
+    displayName.value,
     phoneNumber.value,
-    userTimezone
+    userTimezone,
+    namePronunciation.value || undefined
   );
 
   // Create default prompts
@@ -239,6 +301,9 @@ function resetForm() {
   phoneNumberLocal.value = '';
   verificationCode.value = '';
   codeSent.value = false;
+  showProfileForm.value = false;
+  displayName.value = '';
+  namePronunciation.value = '';
   error.value = '';
   statusMessage.value = '';
 }
@@ -295,8 +360,12 @@ label {
   display: block;
   margin-bottom: 8px;
   color: #555;
-  font-size: 14px;
   font-weight: 500;
+}
+
+label .required {
+  color: #e74c3c;
+  margin-left: 2px;
 }
 
 .phone-input-group {

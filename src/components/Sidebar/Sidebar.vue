@@ -64,8 +64,8 @@
             @mouseleave="handleItemLeave"
             aria-label="Account"
           >
-            <v-avatar size="32" color="orange">
-              <span class="text-white">E</span>
+            <v-avatar size="32" :color="activeItem === 'account' ? '#20808d' : '#656565'">
+              <span class="text-white">{{ userInitial }}</span>
             </v-avatar>
             <span class="nav-label">Account</span>
           </router-link>
@@ -141,14 +141,10 @@
               <h3>Account</h3>
             </div>
             <div class="panel-items">
-              <div class="panel-item">
+              <router-link to="/account" class="panel-item">
                 <v-icon size="18" class="item-icon">mdi-cog-outline</v-icon>
                 <span>Settings</span>
-              </div>
-              <div class="panel-item">
-                <v-icon size="18" class="item-icon">mdi-help-circle-outline</v-icon>
-                <span>Help & Feedback</span>
-              </div>
+              </router-link>
               <div class="button-wrapper">
                 <div 
                   class="panel-item logout-item" 
@@ -171,7 +167,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api } from '@/services/api';
 import { useCallStatus } from '@/composables/useCallStatus';
@@ -190,6 +186,28 @@ const activeItem = computed(() => {
 });
 const hoveredItem = ref<string | null>(null);
 let hideTimeout: ReturnType<typeof setTimeout> | null = null;
+
+// User profile data
+const userInitial = ref('U');
+
+async function loadUserProfile() {
+  try {
+    const result = await api.getProfile();
+    const profileData = Array.isArray(result) && result[0]?.profile
+      ? result[0].profile
+      : (result as any)?.profile;
+    
+    if (profileData?.displayName) {
+      userInitial.value = profileData.displayName.charAt(0).toUpperCase();
+    }
+  } catch (e) {
+    console.error('Failed to load profile for sidebar:', e);
+  }
+}
+
+onMounted(() => {
+  loadUserProfile();
+});
 
 // Call status tracking
 const { isCallInProgress, isCallCompleted } = useCallStatus();
@@ -403,11 +421,14 @@ const handleLogout = async () => {
   margin-top: auto;
   display: flex;
   flex-direction: column;
-  padding: 0 8px;
 }
 
 .account-item {
   padding: 8px 0 !important;
+}
+
+.account-item:hover :deep(.v-avatar) {
+  background-color: #20808d !important;
 }
 
 /* Right column: Expanded panel */
@@ -519,8 +540,13 @@ const handleLogout = async () => {
   color: #d32f2f;
 }
 
+.logout-item .item-icon {
+  color: #666;
+}
+
 .logout-item:hover {
   background: #ffebee;
+  color: #202020;
 }
 
 .logout-item:hover .item-icon {

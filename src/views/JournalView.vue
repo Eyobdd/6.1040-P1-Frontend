@@ -94,31 +94,37 @@
         </v-tooltip>
 
         <div v-if="prompts.length >= 5" class="max-prompts-notice">
-          Maximum of 5 prompts reached
+          Maximum of 5 reflection prompts reached
         </div>
       </div>
 
       <!-- Rating Prompt Section -->
-      <div class="rating-section">
-        <h3 class="section-title">Day Rating</h3>
-        <div class="rating-prompt-item" :class="{ 'inactive': !includeRating }">
+      <div class="rating-section" v-if="ratingPrompts.length > 0">
+        <h3 class="section-title">Rating Prompts</h3>
+        <p class="section-description">These prompts extract quantifiable values from your reflections</p>
+        <div 
+          v-for="ratingPrompt in ratingPrompts" 
+          :key="ratingPrompt._id"
+          class="rating-prompt-item" 
+          :class="{ 'inactive': !ratingPrompt.isActive }"
+        >
           <div class="rating-icon">
             <v-icon size="24" color="#20808d">mdi-star-outline</v-icon>
           </div>
           <div class="rating-content">
-            <div class="rating-text">On a scale from -2 to 2 using only whole numbers, what would you rate today?</div>
-            <div class="rating-description">This prompt asks users to rate their day at the end of the call</div>
+            <div class="rating-text">{{ ratingPrompt.promptText }}</div>
+            <div class="rating-description">Extracts a numerical rating value</div>
           </div>
           <div class="rating-toggle">
-            <v-tooltip :text="includeRating ? 'Disable day rating' : 'Enable day rating'" location="bottom">
+            <v-tooltip :text="ratingPrompt.isActive ? 'Disable rating' : 'Enable rating'" location="bottom">
               <template v-slot:activator="{ props }">
                 <button
                   class="action-btn toggle-btn"
-                  :class="{ inactive: !includeRating }"
-                  @click="toggleRating"
+                  :class="{ inactive: !ratingPrompt.isActive }"
+                  @click="toggleRatingPrompt(ratingPrompt)"
                   v-bind="props"
                 >
-                  <v-icon size="18">{{ includeRating ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
+                  <v-icon size="18">{{ ratingPrompt.isActive ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
                 </button>
               </template>
             </v-tooltip>
@@ -159,10 +165,13 @@ interface Prompt {
   promptText: string;
   position: number;
   isActive: boolean;
+  isRatingPrompt?: boolean;
 }
 
 const router = useRouter();
-const prompts = ref<Prompt[]>([]);
+const allPrompts = ref<Prompt[]>([]);
+const prompts = ref<Prompt[]>([]); // Regular prompts only
+const ratingPrompts = ref<Prompt[]>([]); // Rating prompts only
 const editingId = ref<string | null>(null);
 const editText = ref('');
 const draggingId = ref<string | null>(null);
@@ -171,7 +180,6 @@ const showAddPrompt = ref(false);
 const newPromptText = ref('');
 const editInput = ref<HTMLInputElement | null>(null);
 const newPromptInput = ref<HTMLInputElement | null>(null);
-const includeRating = ref(true); // Rating prompt is active by default
 const userId = ref<string | null>(null);
 
 const getActiveIndex = (index: number) => {
@@ -185,32 +193,46 @@ const getActiveIndex = (index: number) => {
   return activeCount;
 };
 
-const toggleRating = async () => {
+const toggleRatingPrompt = async (ratingPrompt: Prompt) => {
   if (!userId.value) return;
-  const previousValue = includeRating.value;
-  includeRating.value = !includeRating.value;
+  const previousValue = ratingPrompt.isActive;
   
   try {
-    const result = await api.updateRatingPreference(includeRating.value);
+    const result = await api.togglePromptActive(ratingPrompt.position, true); // true = isRatingPrompt
     if ('error' in result) {
-      // Revert on error
-      includeRating.value = previousValue;
-      console.error('Failed to update rating preference:', result.error);
+      console.error('Failed to toggle rating prompt:', result.error);
+    } else {
+      await loadPrompts(); // Reload to get updated state
     }
   } catch (error) {
-    // Revert on error
-    includeRating.value = previousValue;
-    console.error('Failed to update rating preference:', error);
+    console.error('Failed to toggle rating prompt:', error);
   }
 };
 
 const loadPrompts = async () => {
   if (!userId.value) return;
+  console.log('[JournalView] Loading prompts for user:', userId.value);
   const result = await api.getUserPrompts();
-  // Backend returns { prompts: [...] }
-  const promptsArray = (result as any)?.prompts || result;
+  console.log('[JournalView] Raw API result:', result);
+  console.log('[JournalView] Result type:', typeof result, 'isArray:', Array.isArray(result));
+  
+  // Backend returns [{ prompts: [...] }] (array wrapper for Engine pattern)
+  const resultArray = result as any;
+  const promptsArray = Array.isArray(resultArray) && resultArray[0]?.prompts 
+    ? resultArray[0].prompts 
+    : (resultArray?.prompts || []);
+  
+  console.log('[JournalView] Parsed prompts array:', promptsArray);
+  console.log('[JournalView] Prompts count:', promptsArray?.length);
+  
   if (Array.isArray(promptsArray)) {
-    prompts.value = promptsArray;
+    allPrompts.value = promptsArray;
+    // Separate regular prompts from rating prompts
+    prompts.value = promptsArray.filter((p: Prompt) => !p.isRatingPrompt);
+    ratingPrompts.value = promptsArray.filter((p: Prompt) => p.isRatingPrompt);
+    console.log('[JournalView] Regular prompts:', prompts.value.length, 'Rating prompts:', ratingPrompts.value.length);
+  } else {
+    console.error('[JournalView] promptsArray is not an array:', promptsArray);
   }
 };
 
@@ -339,12 +361,23 @@ onMounted(async () => {
   
   // If no prompts exist, create default prompts
   if (prompts.value.length === 0) {
-    await api.createDefaultPrompts();
+    console.log('[JournalView] No prompts found, creating default prompts...');
+    const createResult = await api.createDefaultPrompts();
+    console.log('[JournalView] Create default prompts result:', createResult);
     await loadPrompts();
+    console.log('[JournalView] After creating defaults, prompts count:', prompts.value.length);
+  } else {
+    console.log('[JournalView] Found existing prompts:', prompts.value.length);
   }
   
   // Load rating preference from profile
-  const profile = await api.getProfile();
+  const profileResult = await api.getProfile();
+  // Backend returns [{ profile: {...} }] (array wrapper for Engine pattern)
+  const profileArray = profileResult as any;
+  const profile = Array.isArray(profileArray) && profileArray[0]?.profile
+    ? profileArray[0].profile
+    : (profileArray?.profile || null);
+  
   if (profile && 'includeRating' in profile) {
     includeRating.value = profile.includeRating;
   }
@@ -600,6 +633,12 @@ onMounted(async () => {
   font-size: 1.25rem;
   font-weight: 600;
   color: #202020;
+  margin: 0 0 0.5rem 0;
+}
+
+.section-description {
+  font-size: 0.9rem;
+  color: #666;
   margin: 0 0 1rem 0;
 }
 

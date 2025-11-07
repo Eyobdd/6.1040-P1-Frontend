@@ -93,12 +93,27 @@ class ApiService {
   }
 
   // Profile endpoints
-  async createProfile(displayName: string, phoneNumber: string, timezone: string) {
-    return this.post('Profile/createProfile', { token: this.token, displayName, phoneNumber, timezone });
+  async createProfile(displayName: string, phoneNumber: string, timezone: string, namePronunciation?: string) {
+    const payload: any = { token: this.token, displayName, phoneNumber, timezone };
+    if (namePronunciation) {
+      payload.namePronunciation = namePronunciation;
+    }
+    return this.post('Profile/createProfile', payload);
   }
 
   async getProfile() {
     return this.post('Profile/_getProfile', { token: this.token });
+  }
+
+  async updateProfile(updates: {
+    displayName?: string;
+    phoneNumber?: string;
+    timezone?: string;
+    namePronunciation?: string;
+    includeRating?: boolean;
+    maxRetries?: number;
+  }) {
+    return this.post('Profile/updateProfile', { token: this.token, updates });
   }
 
   async updateRatingPreference(includeRating: boolean) {
@@ -126,8 +141,8 @@ class ApiService {
     return this.post('JournalPrompt/reorderPrompts', { token: this.token, newOrder });
   }
 
-  async togglePromptActive(position: number) {
-    return this.post('JournalPrompt/togglePromptActive', { token: this.token, position });
+  async togglePromptActive(position: number, isRatingPrompt: boolean = false) {
+    return this.post('JournalPrompt/togglePromptActive', { token: this.token, position, isRatingPrompt });
   }
 
   async deletePrompt(position: number) {

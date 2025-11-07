@@ -21,7 +21,7 @@
         <h2 class="prompt-text">{{ currentPrompt?.promptText }}</h2>
         
         <textarea
-          v-if="currentStep < prompts.length"
+          v-if="!isRatingPrompt"
           v-model="currentResponse"
           class="response-input"
           :placeholder="'Share your thoughts...'"
@@ -30,7 +30,7 @@
         ></textarea>
 
         <div v-else class="rating-section">
-          <p class="rating-label">How was your day?</p>
+          <p class="rating-label">Rate your response</p>
           <div class="rating-buttons">
             <button
               v-for="rating in [-2, -1, 0, 1, 2]"
@@ -94,21 +94,19 @@ const completed = ref(false);
 const loading = ref(true);
 const existingEntry = ref<any>(null);
 const showExistingEntry = ref(false);
-const includeRating = ref(true); // User's rating preference
 
-const totalSteps = computed(() => prompts.value.length + (includeRating.value ? 1 : 0)); // prompts + optional rating
+const totalSteps = computed(() => prompts.value.length);
 const progress = computed(() => ((currentStep.value + 1) / totalSteps.value) * 100);
 const currentPrompt = computed(() => prompts.value[currentStep.value]);
+const isRatingPrompt = computed(() => currentPrompt.value?.isRatingPrompt === true);
 
 const canProceed = computed(() => {
-  if (currentStep.value < prompts.value.length) {
-    return currentResponse.value.trim().length > 0;
-  } else if (includeRating.value) {
-    // Rating step - require rating selection
+  if (isRatingPrompt.value) {
+    // Rating prompt - require rating selection
     return selectedRating.value !== null;
   } else {
-    // No rating step - shouldn't reach here, but allow proceed
-    return true;
+    // Regular prompt - require text response
+    return currentResponse.value.trim().length > 0;
   }
 });
 
@@ -155,13 +153,7 @@ async function loadPromptsAndStartSession() {
     // If there's an existing IN_PROGRESS session, the backend will return an error with the session ID
     // and we'll handle it in the error handler below
 
-    // Load user's rating preference
-    const profile = await api.getProfile();
-    if (profile && 'includeRating' in profile) {
-      includeRating.value = profile.includeRating;
-    }
-
-    // Get active prompts (only active ones from user's current settings)
+    // Get active prompts (only active ones from user's current settings, including rating prompts if active)
     const promptsResult = await api.getActivePrompts();
     console.log('Active prompts result:', promptsResult);
     
@@ -169,9 +161,18 @@ async function loadPromptsAndStartSession() {
     const promptsArray = (promptsResult as any)?.prompts || promptsResult;
     
     if (Array.isArray(promptsArray) && promptsArray.length > 0) {
-      prompts.value = promptsArray;
-      responses.value = new Array(promptsArray.length).fill('');
-      console.log('Loaded prompts:', prompts.value);
+      // Sort prompts: regular prompts first (by position), then rating prompts (by position)
+      const sortedPrompts = promptsArray.sort((a: any, b: any) => {
+        // If one is rating and other isn't, non-rating comes first
+        if (a.isRatingPrompt && !b.isRatingPrompt) return 1;
+        if (!a.isRatingPrompt && b.isRatingPrompt) return -1;
+        // Otherwise sort by position
+        return a.position - b.position;
+      });
+      
+      prompts.value = sortedPrompts;
+      responses.value = new Array(sortedPrompts.length).fill('');
+      console.log('Loaded prompts (sorted):', prompts.value);
     } else {
       console.error('No active prompts found. Result:', promptsResult);
       await showAlert({ message: 'Please set up your reflection prompts before starting a session.' });
@@ -247,27 +248,28 @@ async function nextStep() {
   if (!canProceed.value) return;
 
   // Save current response
-  if (currentStep.value < prompts.value.length) {
-    responses.value[currentStep.value] = currentResponse.value;
-    
-    // Record response to backend
-    await api.recordResponse(
-      sessionId.value!,
-      prompts.value[currentStep.value]._id,
-      prompts.value[currentStep.value].promptText,
-      currentStep.value + 1,
-      currentResponse.value
-    );
+  const responseText = isRatingPrompt.value 
+    ? String(selectedRating.value) 
+    : currentResponse.value;
+  
+  responses.value[currentStep.value] = responseText;
+  
+  // Record response to backend
+  await api.recordResponse(
+    sessionId.value!,
+    prompts.value[currentStep.value]._id,
+    prompts.value[currentStep.value].promptText,
+    currentStep.value + 1,
+    responseText
+  );
 
-    currentResponse.value = '';
-    currentStep.value++;
-    
-    // If we've finished all prompts and rating is not included, complete immediately
-    if (currentStep.value >= prompts.value.length && !includeRating.value) {
-      await completeReflection();
-    }
-  } else {
-    // Rating step - complete session
+  // Reset inputs
+  currentResponse.value = '';
+  selectedRating.value = null;
+  currentStep.value++;
+  
+  // If we've finished all prompts, complete the reflection
+  if (currentStep.value >= prompts.value.length) {
     await completeReflection();
   }
 }
@@ -275,8 +277,15 @@ async function nextStep() {
 function previousStep() {
   if (currentStep.value > 0) {
     currentStep.value--;
-    if (currentStep.value < prompts.value.length) {
-      currentResponse.value = responses.value[currentStep.value];
+    const previousResponse = responses.value[currentStep.value];
+    
+    // Restore the previous response based on prompt type
+    if (prompts.value[currentStep.value]?.isRatingPrompt) {
+      selectedRating.value = previousResponse ? Number(previousResponse) : null;
+      currentResponse.value = '';
+    } else {
+      currentResponse.value = previousResponse || '';
+      selectedRating.value = null;
     }
   }
 }
@@ -287,9 +296,13 @@ function selectRating(rating: number) {
 
 async function completeReflection() {
   try {
-    // Set rating (only if rating is included)
-    if (includeRating.value && selectedRating.value !== null) {
-      await api.setRating(sessionId.value!, selectedRating.value!);
+    // Check if any prompt was a rating prompt
+    const hasRatingPrompt = prompts.value.some(p => p.isRatingPrompt);
+    const ratingValue = hasRatingPrompt ? responses.value.find((r, i) => prompts.value[i]?.isRatingPrompt) : null;
+    
+    // Set rating if we have one
+    if (hasRatingPrompt && ratingValue !== null && ratingValue !== undefined) {
+      await api.setRating(sessionId.value!, Number(ratingValue));
     }
 
     // Complete session
@@ -308,7 +321,7 @@ async function completeReflection() {
         user: currentUser.value,
         reflectionSession: sessionId.value,
         endedAt: new Date().toISOString(),
-        rating: includeRating.value ? selectedRating.value : undefined,
+        rating: hasRatingPrompt && ratingValue ? Number(ratingValue) : undefined,
       },
       sessionResponses
     );

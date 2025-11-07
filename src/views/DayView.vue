@@ -201,16 +201,24 @@ async function loadEntryForDate() {
     console.log('Entry result:', entryResult);
     console.log('Date string:', dateString);
 
-    // Backend returns { entry: JournalEntryDoc | null }
-    const entry = (entryResult as any)?.entry || null;
+    // Backend returns [{ entry: JournalEntryDoc | null }] (array wrapper for Engine pattern)
+    const resultArray = entryResult as any;
+    const entry = Array.isArray(resultArray) && resultArray[0]?.entry
+      ? resultArray[0].entry
+      : (resultArray?.entry || null);
+    console.log('Parsed entry:', entry);
 
     if (entry && '_id' in entry) {
       dayEntry.value = entry;
       // Load responses
       const responsesResult = await api.getEntryResponses(entry._id);
       
-      // Backend returns { responses: [...] }
-      const responsesArray = (responsesResult as any)?.responses || responsesResult;
+      // Backend returns [{ responses: [...] }] (array wrapper for Engine pattern)
+      const responsesResultArray = responsesResult as any;
+      const responsesArray = Array.isArray(responsesResultArray) && responsesResultArray[0]?.responses
+        ? responsesResultArray[0].responses
+        : (responsesResultArray?.responses || []);
+      
       if (Array.isArray(responsesArray)) {
         responses.value = responsesArray;
       }

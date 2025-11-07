@@ -145,8 +145,11 @@ const loadEntries = async () => {
     const result = await api.getEntriesWithResponsesByUser();
     console.log('API result:', result); // Debug log
     
-    // Backend returns { entries: [...] }
-    const entriesArray = (result as any)?.entries || result;
+    // Backend returns [{ entries: [...] }] (array wrapper for Engine pattern)
+    const resultArray = result as any;
+    const entriesArray = Array.isArray(resultArray) && resultArray[0]?.entries
+      ? resultArray[0].entries
+      : (resultArray?.entries || []);
     console.log('Entries array:', entriesArray, 'isArray:', Array.isArray(entriesArray)); // Debug log
     
     // The new endpoint returns entries with responses included
