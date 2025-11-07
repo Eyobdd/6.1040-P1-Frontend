@@ -187,7 +187,7 @@ const getActiveIndex = (index: number) => {
   // Count only active prompts up to this index
   let activeCount = 0;
   for (let i = 0; i <= index; i++) {
-    if (prompts.value[i].isActive) {
+    if (prompts.value[i]?.isActive) {
       activeCount++;
     }
   }
@@ -290,10 +290,12 @@ const addPrompt = async () => {
 };
 
 const handleDragStart = (e: DragEvent, index: number) => {
-  draggingId.value = prompts.value[index]._id;
-  if (e.dataTransfer) {
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/html', (e.target as HTMLElement).innerHTML);
+  if (prompts.value[index]) {
+    draggingId.value = prompts.value[index]._id;
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/html', (e.target as HTMLElement).innerHTML);
+    }
   }
 };
 
@@ -316,8 +318,10 @@ const handleDrop = async (e: DragEvent, dropIndex: number) => {
   // Reorder locally
   const newPrompts = [...prompts.value];
   const [draggedItem] = newPrompts.splice(dragIndex, 1);
-  newPrompts.splice(dropIndex, 0, draggedItem);
-  prompts.value = newPrompts;
+  if (draggedItem) {
+    newPrompts.splice(dropIndex, 0, draggedItem);
+    prompts.value = newPrompts;
+  }
   
   // Update backend
   if (!userId.value) return;

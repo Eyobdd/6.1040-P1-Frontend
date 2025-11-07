@@ -467,21 +467,25 @@ function windowsOverlap(w1: { startTime: number; endTime: number }, w2: { startT
 function mergeOverlappingWindows(day: DayOfWeek) {
   const dayWindows = getWindowsForDay(day);
   if (dayWindows.length <= 1) return;
-  
+
   let merged = false;
-  
+
   for (let i = 0; i < dayWindows.length; i++) {
     for (let j = i + 1; j < dayWindows.length; j++) {
-      if (windowsOverlap(dayWindows[i], dayWindows[j])) {
+      const w1 = dayWindows[i];
+      const w2 = dayWindows[j];
+
+      if (w1 && w2 && windowsOverlap(w1, w2)) {
         // Merge windows
-        const mergedWindow = {
-          ...dayWindows[i],
-          startTime: Math.min(dayWindows[i].startTime, dayWindows[j].startTime),
-          endTime: Math.max(dayWindows[i].endTime, dayWindows[j].endTime),
+        const mergedWindow: RecurringWindow = {
+          id: w1.id,
+          dayOfWeek: w1.dayOfWeek,
+          startTime: Math.min(w1.startTime, w2.startTime),
+          endTime: Math.max(w1.endTime, w2.endTime),
         };
-        
+
         // Remove both windows and add merged one
-        windows.value = windows.value.filter(w => w.id !== dayWindows[i].id && w.id !== dayWindows[j].id);
+        windows.value = windows.value.filter(w => w.id !== w1.id && w.id !== w2.id);
         windows.value.push(mergedWindow);
         merged = true;
         break;

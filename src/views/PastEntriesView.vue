@@ -161,6 +161,10 @@ const loadEntries = async () => {
 };
 
 const formatDate = (dateString: string) => {
+  if (!dateString) {
+    return "Invalid date";
+  }
+
   // Parse the date string - handle both ISO strings and date-only strings
   let date: Date;
   if (dateString.includes('T')) {
@@ -168,7 +172,10 @@ const formatDate = (dateString: string) => {
     date = new Date(dateString);
   } else {
     // Date-only string (YYYY-MM-DD) - parse as local date
-    const [year, month, day] = dateString.split('-').map(Number);
+    const parts = dateString.split('-');
+    const year = parts[0] ? parseInt(parts[0], 10) : 0;
+    const month = parts[1] ? parseInt(parts[1], 10) : 0;
+    const day = parts[2] ? parseInt(parts[2], 10) : 0;
     date = new Date(year, month - 1, day);
   }
   
