@@ -41,7 +41,6 @@ onMounted(async () => {
 
     userId.value = authResult.user;
   } catch (e) {
-    console.error('Failed to load schedule:', e);
     router.push('/auth');
   }
 });

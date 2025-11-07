@@ -199,22 +199,17 @@ const toggleRatingPrompt = async (ratingPrompt: Prompt) => {
   
   try {
     const result = await api.togglePromptActive(ratingPrompt.position, true); // true = isRatingPrompt
-    if ('error' in result) {
-      console.error('Failed to toggle rating prompt:', result.error);
-    } else {
+    if (!('error' in result)) {
       await loadPrompts(); // Reload to get updated state
     }
   } catch (error) {
-    console.error('Failed to toggle rating prompt:', error);
+    // Failed to toggle rating prompt
   }
 };
 
 const loadPrompts = async () => {
   if (!userId.value) return;
-  console.log('[JournalView] Loading prompts for user:', userId.value);
   const result = await api.getUserPrompts();
-  console.log('[JournalView] Raw API result:', result);
-  console.log('[JournalView] Result type:', typeof result, 'isArray:', Array.isArray(result));
   
   // Backend returns [{ prompts: [...] }] (array wrapper for Engine pattern)
   const resultArray = result as any;
@@ -222,17 +217,11 @@ const loadPrompts = async () => {
     ? resultArray[0].prompts 
     : (resultArray?.prompts || []);
   
-  console.log('[JournalView] Parsed prompts array:', promptsArray);
-  console.log('[JournalView] Prompts count:', promptsArray?.length);
-  
   if (Array.isArray(promptsArray)) {
     allPrompts.value = promptsArray;
     // Separate regular prompts from rating prompts
     prompts.value = promptsArray.filter((p: Prompt) => !p.isRatingPrompt);
     ratingPrompts.value = promptsArray.filter((p: Prompt) => p.isRatingPrompt);
-    console.log('[JournalView] Regular prompts:', prompts.value.length, 'Rating prompts:', ratingPrompts.value.length);
-  } else {
-    console.error('[JournalView] promptsArray is not an array:', promptsArray);
   }
 };
 
@@ -361,13 +350,8 @@ onMounted(async () => {
   
   // If no prompts exist, create default prompts
   if (prompts.value.length === 0) {
-    console.log('[JournalView] No prompts found, creating default prompts...');
-    const createResult = await api.createDefaultPrompts();
-    console.log('[JournalView] Create default prompts result:', createResult);
+    await api.createDefaultPrompts();
     await loadPrompts();
-    console.log('[JournalView] After creating defaults, prompts count:', prompts.value.length);
-  } else {
-    console.log('[JournalView] Found existing prompts:', prompts.value.length);
   }
   
   // Load rating preference from profile

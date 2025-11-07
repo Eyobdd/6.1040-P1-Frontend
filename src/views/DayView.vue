@@ -39,29 +39,24 @@
             <p v-else-if="canStartReflection">Take a few minutes to reflect on your day</p>
             <p v-else class="disabled-message">Reflections can only be recorded for today</p>
             <div v-if="canStartReflection && !isCallInProgress" class="reflection-actions">
-              <v-btn 
+              <button 
                 @click="startReflection" 
-                color="#20808d" 
-                size="large" 
-                class="mt-4"
+                class="action-button"
                 :disabled="isCallInProgress"
                 aria-label="Start reflection for today"
               >
-                <v-icon left>mdi-pencil</v-icon>
+                <v-icon size="18">mdi-pencil</v-icon>
                 Type Reflection
-              </v-btn>
-              <v-btn 
+              </button>
+              <button 
                 @click="initiatePhoneCall" 
-                color="#20808d" 
-                size="large" 
-                class="mt-4 ml-3"
-                :disabled="isCallInProgress"
-                :loading="checkingCallStatus"
+                class="action-button"
+                :disabled="isCallInProgress || checkingCallStatus"
                 aria-label="Initiate phone reflection"
               >
-                <v-icon left>mdi-phone</v-icon>
+                <v-icon size="18">mdi-phone</v-icon>
                 Initiate Call
-              </v-btn>
+              </button>
             </div>
           </div>
         </div>
@@ -198,15 +193,12 @@ async function loadEntryForDate() {
     const day = String(selectedDate.value.getDate()).padStart(2, '0');
     const dateString = `${year}-${month}-${day}`;
     const entryResult = await api.getEntryByDate(dateString);
-    console.log('Entry result:', entryResult);
-    console.log('Date string:', dateString);
 
     // Backend returns [{ entry: JournalEntryDoc | null }] (array wrapper for Engine pattern)
     const resultArray = entryResult as any;
     const entry = Array.isArray(resultArray) && resultArray[0]?.entry
       ? resultArray[0].entry
       : (resultArray?.entry || null);
-    console.log('Parsed entry:', entry);
 
     if (entry && '_id' in entry) {
       dayEntry.value = entry;
@@ -227,7 +219,7 @@ async function loadEntryForDate() {
       responses.value = [];
     }
   } catch (e) {
-    console.error('Failed to load entry:', e);
+    // Failed to load entry
   } finally {
     loading.value = false;
   }
@@ -284,7 +276,6 @@ async function initiatePhoneCall() {
     
     await showAlert({ message: 'Call scheduled! Your phone will ring shortly.' });
   } catch (error) {
-    console.error('Failed to initiate call:', error);
     await showAlert({ message: 'Unable to start your call. Please try again.' });
   } finally {
     checkingCallStatus.value = false;
@@ -384,6 +375,49 @@ onMounted(() => {
   gap: 12px;
   justify-content: center;
   flex-wrap: wrap;
+  margin-top: 24px;
+}
+
+.action-button {
+  background: #20808d;
+  border: none;
+  color: white;
+  padding: 10px 24px;
+  border-radius: 24px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  outline: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.action-button:focus {
+  outline: none;
+}
+
+.action-button:focus-visible {
+  outline: 2px solid #20808d;
+  outline-offset: 2px;
+}
+
+.action-button:hover:not(:disabled) {
+  background: #1a6b77;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(32, 128, 141, 0.3);
+}
+
+.action-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.action-button:disabled {
+  background: #e0e0e0;
+  color: #999;
+  cursor: not-allowed;
 }
 
 .disabled-message {

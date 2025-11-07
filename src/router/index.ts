@@ -66,21 +66,16 @@ router.beforeEach(async (to, from, next) => {
   // Check if any matched route requires auth
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
   
-  console.log('Router guard:', { to: to.path, from: from.path, token: !!token, requiresAuth });
-  
   // If route requires auth and no token, redirect to auth
   if (requiresAuth && !token) {
-    console.log('Redirecting to auth - no token');
     next('/auth');
   } 
   // If already logged in and trying to access auth page, redirect to home
   else if (to.path === '/auth' && token) {
-    console.log('Redirecting to home - already logged in');
     next('/');
   } 
   // Allow navigation
   else {
-    console.log('Allowing navigation');
     next();
   }
 });

@@ -188,7 +188,6 @@ async function loadProfile() {
       profile.value = profileData;
     }
   } catch (e) {
-    console.error('Failed to load profile:', e);
     showAlertMessage('Failed to load profile', 'error');
   } finally {
     loading.value = false;
@@ -223,7 +222,6 @@ async function saveEdit() {
       showAlertMessage('Profile updated successfully', 'success');
     }
   } catch (e: any) {
-    console.error('Failed to update profile:', e);
     showAlertMessage(e.message || 'Failed to update profile', 'error');
   } finally {
     saving.value = false;
@@ -237,7 +235,6 @@ async function handleLogout() {
     localStorage.removeItem('phoneNumber');
     router.push('/auth');
   } catch (error) {
-    console.error('Logout failed:', error);
     api.clearToken();
     localStorage.removeItem('phoneNumber');
     router.push('/auth');

@@ -127,44 +127,33 @@ const loadEntries = async () => {
     // Get authenticated user
     const token = api.getToken();
     if (!token) {
-      console.error('No auth token found');
       router.push('/auth');
       return;
     }
 
     const authResult = await api.authenticate(token);
     if ('error' in authResult || !authResult.user) {
-      console.error('Authentication failed');
       router.push('/auth');
       return;
     }
 
     userId.value = authResult.user;
-    console.log('Loading entries for user:', userId.value); // Debug log
     
     const result = await api.getEntriesWithResponsesByUser();
-    console.log('API result:', result); // Debug log
     
     // Backend returns [{ entries: [...] }] (array wrapper for Engine pattern)
     const resultArray = result as any;
     const entriesArray = Array.isArray(resultArray) && resultArray[0]?.entries
       ? resultArray[0].entries
       : (resultArray?.entries || []);
-    console.log('Entries array:', entriesArray, 'isArray:', Array.isArray(entriesArray)); // Debug log
     
     // The new endpoint returns entries with responses included
     if (Array.isArray(entriesArray)) {
       entries.value = entriesArray;
-      console.log('Loaded entries:', entries.value.length); // Debug log
-      if (entries.value.length > 0) {
-        console.log('First entry:', entries.value[0]); // Debug log
-      }
     } else {
-      console.error('Unexpected result format:', result);
       entries.value = [];
     }
   } catch (error) {
-    console.error('Failed to load entries:', error);
     entries.value = [];
   } finally {
     loading.value = false;

@@ -144,7 +144,6 @@ async function loadPromptsAndStartSession() {
     
     if (entryResult && '_id' in entryResult) {
       // Entry exists for today - redirect to day view
-      console.log('Entry already exists for today, redirecting to day view');
       router.push('/');
       return;
     }
@@ -155,7 +154,6 @@ async function loadPromptsAndStartSession() {
 
     // Get active prompts (only active ones from user's current settings, including rating prompts if active)
     const promptsResult = await api.getActivePrompts();
-    console.log('Active prompts result:', promptsResult);
     
     // Backend returns { prompts: [...] }
     const promptsArray = (promptsResult as any)?.prompts || promptsResult;
@@ -172,9 +170,7 @@ async function loadPromptsAndStartSession() {
       
       prompts.value = sortedPrompts;
       responses.value = new Array(sortedPrompts.length).fill('');
-      console.log('Loaded prompts (sorted):', prompts.value);
     } else {
-      console.error('No active prompts found. Result:', promptsResult);
       await showAlert({ message: 'Please set up your reflection prompts before starting a session.' });
       router.push('/journal/prompts');
       return;
@@ -191,8 +187,6 @@ async function loadPromptsAndStartSession() {
     );
 
     if ('error' in sessionResult) {
-      console.error('Failed to start session:', sessionResult.error);
-      
       // Check if error is about existing IN_PROGRESS session
       const errorMsg = sessionResult.error || '';
       const sessionIdMatch = errorMsg.match(/IN_PROGRESS session: ([a-f0-9-]+)/);
@@ -200,7 +194,6 @@ async function loadPromptsAndStartSession() {
       if (sessionIdMatch) {
         // Found existing session ID in error message
         const existingSessionId = sessionIdMatch[1];
-        console.log('[StartSession] Found existing session in error:', existingSessionId);
         
         const abandon = await showAlert({
           message: 'You have an incomplete reflection from before. Would you like to abandon it and start fresh?',
@@ -210,7 +203,6 @@ async function loadPromptsAndStartSession() {
         });
         
         if (abandon) {
-          console.log('[StartSession] Abandoning existing session:', existingSessionId);
           await api.abandonSession(existingSessionId);
           // Retry starting the session
           await loadPromptsAndStartSession();
@@ -228,7 +220,6 @@ async function loadPromptsAndStartSession() {
     }
 
     if (!sessionResult.session) {
-      console.error('Session result missing session ID:', sessionResult);
       await showAlert({ message: 'Unable to start your reflection session. Please try again.' });
       router.push('/');
       return;
@@ -236,9 +227,7 @@ async function loadPromptsAndStartSession() {
 
     sessionId.value = sessionResult.session;
     loading.value = false;
-    console.log('Session started successfully:', sessionId.value);
   } catch (e) {
-    console.error('Failed to start session:', e);
     await showAlert({ message: 'Unable to start your reflection session. Please try again.' });
     router.push('/');
   }
@@ -328,7 +317,6 @@ async function completeReflection() {
 
     completed.value = true;
   } catch (e) {
-    console.error('Failed to complete reflection:', e);
     await showAlert({ message: 'Unable to save your reflection. Please try again.' });
   }
 }
@@ -380,24 +368,16 @@ async function resumeSession(session: any) {
   }
   
   loading.value = false;
-  console.log('Resumed session successfully:', sessionId.value);
 }
 
 async function cleanupIncompleteSession() {
   // Simplified: Backend handles idempotency, no need for cleanupInProgress flag
-  console.log('[Cleanup] Starting cleanup - sessionId:', sessionId.value, 'completed:', completed.value);
-  
   if (sessionId.value && !completed.value) {
     try {
-      console.log('[Cleanup] Calling abandonSession API for session:', sessionId.value);
-      const result = await api.abandonSession(sessionId.value);
-      console.log('[Cleanup] AbandonSession result:', result);
+      await api.abandonSession(sessionId.value);
     } catch (e) {
-      console.error('[Cleanup] Failed to abandon session:', e);
       // Safe to ignore - backend will handle via webhook if this was a phone call
     }
-  } else {
-    console.log('[Cleanup] Skipping abandon - no session or already completed');
   }
 }
 
