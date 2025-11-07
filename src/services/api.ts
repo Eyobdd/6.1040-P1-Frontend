@@ -1,7 +1,7 @@
 // API Service for Zien Backend
 import axios, { type AxiosInstance } from 'axios';
 
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
 export interface ApiResponse<T> {
   data?: T;
